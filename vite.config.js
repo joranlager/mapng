@@ -128,6 +128,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/gpxz/, ''),
       },
+      '/api/kartverket-adresse': {
+        target: 'https://ws.geonorge.no',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/kartverket-adresse/, '/adresser/v1'),
+      },
       '/api/nominatim-osm': {
         target: 'https://nominatim.openstreetmap.org',
         changeOrigin: true,

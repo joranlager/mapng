@@ -167,7 +167,7 @@ export const getLocationTypeIcon = (type) => {
     const iconGroups = [
         ['🏙️', ['city']],
         ['🏘️', ['town', 'village', 'suburb', 'neighbourhood', 'neighborhood', 'quarter', 'residential']],
-        ['🏠', ['hamlet', 'isolated_dwelling', 'house']],
+        ['🏠', ['hamlet', 'isolated_dwelling', 'house', 'address']],
         ['⛰️', ['mountain', 'peak', 'hill', 'ridge', 'saddle', 'fell']],
         ['🌋', ['volcano']],
         ['🧗', ['cliff']],

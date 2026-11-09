@@ -88,6 +88,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Search, Loader2, X, MapPinOff } from 'lucide-vue-next';
 import { searchLocation, getShortName, getLocationTypeIcon } from '../../services/nominatim';
+import { searchNorwayAddresses } from '../../services/kartverketAddress';
 
 const { t } = useI18n({ useScope: 'global' });
 
@@ -133,7 +134,14 @@ const performSearch = async () => {
   highlightedIndex.value = -1;
   
   try {
-    const searchResults = await searchLocation(searchQuery.value);
+    // Norwegian street addresses (Kartverket) come first; Nominatim covers everything else
+    const [addressResult, placeResult] = await Promise.allSettled([
+      searchNorwayAddresses(searchQuery.value),
+      searchLocation(searchQuery.value)
+    ]);
+    const addresses = addressResult.status === 'fulfilled' ? addressResult.value : [];
+    const places = placeResult.status === 'fulfilled' ? placeResult.value : [];
+    const searchResults = [...addresses, ...places];
     results.value = searchResults;
     noResults.value = searchResults.length === 0;
   } catch (error) {
