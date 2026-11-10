@@ -10,6 +10,8 @@ import {
   OVERTURE_ATTRIBUTION, OVERTURE_RELEASE, fetchOsmFromOverture, fetchOvertureBuildingRecords, mergeOvertureBuildings,
 } from "./overtureTiles.js";
 import { getLoadedOsmFile, osmFileCoverage } from "./osmFile.js";
+import { norwayBuildingsEnabled, touchesNorway, mergeNorwayBuildings, NORWAY_BUILDINGS_ATTRIBUTION } from "./norway/matrikkelBuildings.js";
+import { norwayBuildingsForArea } from "./norway/matrikkelFiles.js";
 
 const OVERTURE_ENDPOINT = "overture-maps";
 // (the user's own OSM file: osmFile.js)
@@ -1160,6 +1162,23 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
       }
     }
 
+    // Norwegian buildings (Kartverket Matrikkel) where the area is in Norway; OSM's own buildings are kept, and
+    // any Matrikkel building already under an OSM footprint is left out.
+    let norwayBuildings = null;
+    if (endpoint !== OVERTURE_ENDPOINT && !halves && norwayBuildingsEnabled() && touchesNorway(bounds)) {
+      onStatus?.("Adding buildings from the Kartverket Matrikkel...");
+      try {
+        const area = await norwayBuildingsForArea(bounds, { signal });
+        const merged = mergeNorwayBuildings(data, area.buildings, area.addresses, bounds);
+        data = merged.data;
+        norwayBuildings = { kommuner: area.kommuner, added: merged.added, skipped: merged.skipped };
+        console.log(`[OSM] Matrikkel: ${merged.added} buildings added, ${merged.skipped} already mapped or outside the area.`);
+      } catch (error) {
+        if (error?.name === "AbortError" || signal?.aborted) throw error;
+        console.warn("[OSM] Matrikkel buildings unavailable; keeping OSM buildings only:", error?.message || error);
+      }
+    }
+
     lastOSMRequestInfo = {
       ...queryParams,
       endpointUsed: endpoint,
@@ -1168,6 +1187,7 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
         ? { overtureRelease: OVERTURE_RELEASE, attribution: OVERTURE_ATTRIBUTION }
         : {}),
       ...(overtureBuildings ? { overtureBuildings, attribution: OVERTURE_ATTRIBUTION } : {}),
+      ...(norwayBuildings ? { norwayBuildings, attribution: NORWAY_BUILDINGS_ATTRIBUTION } : {}),
       ...(String(endpoint).includes(OSM_FILE_ENDPOINT) ? { osmFile: { name: getLoadedOsmFile()?.name, coverage: result.coverage, share: result.share, loadedAt: getLoadedOsmFile()?.loadedAt } } : {}),
       startedAt,
       completedAt: new Date().toISOString(),
