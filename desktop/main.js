@@ -80,6 +80,11 @@ function servePage() {
       const bytes = folder ? (() => { try { return readZipFile(path.join(folder, zipName), `levels/${preview[2]}/preview.png`); } catch { return null; } })() : null;
       return bytes ? new Response(bytes, { headers: { 'content-type': 'image/png', 'cache-control': 'no-store' } }) : new Response(null, { status: 404 });
     }
+    // Norway: Kartverket's address search, straight from Kartverket (mapng.com has no route for it)
+    if (url.pathname.startsWith('/api/kartverket-adresse/')) {
+      const rest = url.pathname.slice('/api/kartverket-adresse'.length);
+      return net.fetch(`https://ws.geonorge.no/adresser/v1${rest}${url.search}`, { method: 'GET', headers: { accept: 'application/json' } });
+    }
     if (url.pathname.startsWith('/api/')) {
       // (as on mapng.com: its worker answers /api/*; MAPNG_TEST_API_ORIGIN sends
       // endpoints not yet live there to a local test server)

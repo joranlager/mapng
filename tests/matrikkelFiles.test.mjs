@@ -113,3 +113,9 @@ test('a failing download reports the status instead of returning partial data', 
   const fetchImpl = async (url) => (url.includes('wfs.matrikkelen') ? response('<app:kommunenummer>5001</app:kommunenummer>') : response('', { ok: false, status: 503 }));
   await assert.rejects(() => loadKommune('5001', { fetchImpl, cache: undefined }), /503/);
 });
+
+test('GML given as bytes parses the same as text', () => {
+  const bytes = new TextEncoder().encode(bygningGml);
+  assert.deepEqual(parseBuildingsGml(bytes), parseBuildingsGml(bygningGml));
+  assert.deepEqual([...parseAddressesGml(new TextEncoder().encode(adresseGml))], [...parseAddressesGml(adresseGml)]);
+});

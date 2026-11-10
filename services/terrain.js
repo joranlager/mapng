@@ -24,6 +24,8 @@ import {
 import { createLocalToWGS84 } from "./geoUtils.js";
 import { fetchKron86GridForBounds, isWithinKron86Coverage } from "./kron86.js";
 import { fetchMapterhornRaw } from "./mapterhorn.js";
+import { fetchKartverketDtmRaw, norwayElevationEnabled } from "./norway/kartverketDtm.js";
+import { touchesNorway } from "./norway/matrikkelBuildings.js";
 import { isGroundLevelRoad, smoothRoadsInHeightmap } from "./roadSmoother.js";
 import { snapRoadsToTerrain } from "./roadSnap.js";
 import { roundRoadCorners } from "./roadCurves.js";
@@ -1940,6 +1942,29 @@ export const fetchTerrainData = async (
     }
   }
 
+  // Norway: Kartverket's own 1 m terrain model (DTM1), read straight from Kartverket for the map area, ahead of
+  // Mapterhorn ("Best free"). Anything that goes wrong leaves the map to Mapterhorn, as before.
+  let kartverketInfo = null;
+  if (!rawData && useMapterhorn && !flat && norwayElevationEnabled() && touchesNorway(fetchBounds)) {
+    try {
+      const kv = await fetchKartverketDtmRaw(fetchBounds, { metersPerPixel: effectiveMetersPerPixel, onProgress, signal });
+      if (kv?.tiles?.length) {
+        rawData = { tiles: kv.tiles };
+        rawDataSourceType = 'grid';
+        kartverketInfo = { metersPerPixel: kv.metersPerPixel, sourceTiles: kv.sourceTiles, validFraction: kv.validFraction };
+        shouldSmooth = kv.metersPerPixel > 4;
+        console.info(`[Kartverket] DTM1 at ${kv.metersPerPixel} m from tile${kv.sourceTiles.length > 1 ? 's' : ''} ${kv.sourceTiles.join(', ')}, heights on ${Math.round(kv.validFraction * 100)}% of the area.`);
+      } else {
+        kartverketInfo = { fallbackReason: 'no_data' };
+      }
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      console.warn('[Kartverket] DTM1 could not be read, using Mapterhorn instead:', error);
+      kartverketInfo = { fallbackReason: 'request_failed', error: String(error?.message || error).slice(0, 200) };
+      onProgress?.('Kartverket elevation did not answer. Using Mapterhorn...');
+    }
+  }
+
   // Mapterhorn: free lidar tiles where a national model exists (deeper than z12); the standard 30 m fills the rest.
   let mapterhornInfo = null;
   if (!rawData && useMapterhorn && !flat) {
@@ -2474,6 +2499,7 @@ export const fetchTerrainData = async (
     kron86Fallback,
     kron86FallbackReason,
     mapterhornInfo,
+    kartverketInfo,
     groundFilterInfo,
     // built from the global 30 m, or a source that only had coarse data
     // here (GPXZ / Mapterhorn smoothed as 30 m; no raw or flat): the export

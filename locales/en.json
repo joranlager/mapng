@@ -62,6 +62,7 @@
     "elevationDataSource": "Elevation data source",
     "standard30m": "Global 30 m only",
     "mapterhornFree": "Best free (lidar + global 30 m)",
+    "norwaySources": "Norway: elevation is read straight from Kartverket (Høydedata DTM1, 1 m). Buildings get their type and address from the Kartverket Matrikkel.",
     "standardDescription": "AWS Terrain Tiles (mostly SRTM). Used automatically where there's no lidar; pick this to use it everywhere.",
     "mapterhornDescription": "Free lidar from Mapterhorn where a national survey exists (much of Europe, Japan, Australia, New Zealand, parts of the US and Canada); the global 30 m everywhere else. No key needed.",
     "hintFreeLidar": "Free lidar (~{res} m) covers {pct}% of this area.",

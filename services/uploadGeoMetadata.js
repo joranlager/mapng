@@ -44,6 +44,10 @@ export const getBuiltInProj4 = (epsgCode) => {
   if (epsgCode === 2180) {
     return '+proj=tmerc +lat_0=0 +lon_0=19 +k=0.9993 +x_0=500000 +y_0=-5300000 +ellps=GRS80 +units=m +no_defs';
   }
+  if (epsgCode >= 25828 && epsgCode <= 25838) {
+    // ETRS89 / UTM zones 28N-38N (Norway uses 25832, 25833 and 25835)
+    return `+proj=utm +zone=${epsgCode - 25800} +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs`;
+  }
   if (epsgCode >= 32601 && epsgCode <= 32660) {
     return `+proj=utm +zone=${epsgCode - 32600} +datum=WGS84 +units=m +no_defs`;
   }

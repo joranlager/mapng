@@ -11,14 +11,35 @@ import { utm32ToLatLon } from './matrikkelBuildings.js';
 
 export const MATRIKKEL_WFS_BASE = 'https://wfs.geonorge.no/skwms1';
 export const MATRIKKEL_ATOM = {
-  buildings: 'http://nedlasting.geonorge.no/geonorge/ATOM-feeds/MatrikkelenBygning_AtomFeedGML.xml',
-  addresses: 'http://nedlasting.geonorge.no/geonorge/ATOM-feeds/MatrikkelenAdresse_AtomFeedGML.xml',
+  buildings: 'https://nedlasting.geonorge.no/geonorge/ATOM-feeds/MatrikkelenBygning_AtomFeedGML.xml',
+  addresses: 'https://nedlasting.geonorge.no/geonorge/ATOM-feeds/MatrikkelenAdresse_AtomFeedGML.xml',
 };
 const WFS_CRS = 'urn:ogc:def:crs:EPSG::4258';   // stored system of the WFS (latitude, longitude)
 const FILE_PROJECTION = '25832';                 // the zip files we read (easting, northing)
 
 // Feature members of a GML file, any namespace prefix.
 const FEATURE_MEMBER = /<(?:[\w.-]+:)?featureMember[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?featureMember>/g;
+const CHUNK_BYTES = 8 << 20;
+
+/**
+ * The feature members of a GML file, as text or as bytes. Bytes are decoded a
+ * piece at a time: a large municipality's file is hundreds of megabytes, more
+ * than one string can hold in a browser.
+ */
+function* featureMembers(input) {
+  if (typeof input === 'string') {
+    for (const m of input.matchAll(FEATURE_MEMBER)) yield m[1];
+    return;
+  }
+  const decoder = new TextDecoder('utf-8');
+  let carry = '';
+  for (let o = 0; o < input.length; o += CHUNK_BYTES) {
+    carry += decoder.decode(input.subarray(o, Math.min(input.length, o + CHUNK_BYTES)), { stream: true });
+    let end = 0;
+    for (const m of carry.matchAll(FEATURE_MEMBER)) { yield m[1]; end = m.index + m[0].length; }
+    carry = carry.slice(end);
+  }
+}
 
 const tagValue = (xml, name) => {
   const m = xml.match(new RegExp(`<(?:[\\w.-]+:)?${name}>([^<]*)<`));
@@ -30,17 +51,27 @@ const memoryCache = () => {
   return { get: async (k) => store.get(k) ?? null, put: async (k, v) => { store.set(k, v); } };
 };
 
-/** Municipality numbers (kommunenummer) of building points near the box, from a small WFS query. */
-export async function kommunerInBox(bounds, { fetchImpl = globalThis.fetch, signal, sample = 200 } = {}) {
-  const bbox = `${bounds.south},${bounds.west},${bounds.north},${bounds.east},${WFS_CRS}`;
-  const params = new URLSearchParams({
-    service: 'WFS', version: '2.0.0', request: 'GetFeature', typenames: 'app:Bygning',
-    srsName: WFS_CRS, bbox, count: String(sample),
-  });
-  const res = await fetchImpl(`${MATRIKKEL_WFS_BASE}/wfs.matrikkelen-bygningspunkt?${params}`, { signal });
-  if (!res.ok) throw new Error(`Matrikkel WFS answered ${res.status}`);
-  const text = await res.text();
-  return [...new Set([...text.matchAll(/kommunenummer>(\d{4})</g)].map((m) => m[1]))];
+/**
+ * Municipality numbers (kommunenummer) of the building points in the box. The
+ * box is asked in a 3 x 3 grid of small WFS queries, so a municipality that
+ * holds only a corner of the map is still found.
+ */
+export async function kommunerInBox(bounds, { fetchImpl = globalThis.fetch, signal, sample = 30, grid = 3 } = {}) {
+  const found = new Set();
+  const dLat = (bounds.north - bounds.south) / grid, dLng = (bounds.east - bounds.west) / grid;
+  const cells = [];
+  for (let i = 0; i < grid; i++) for (let j = 0; j < grid; j++) cells.push([bounds.south + i * dLat, bounds.west + j * dLng]);
+  await Promise.all(cells.map(async ([south, west]) => {
+    const bbox = `${south},${west},${south + dLat},${west + dLng},${WFS_CRS}`;
+    const params = new URLSearchParams({
+      service: 'WFS', version: '2.0.0', request: 'GetFeature', typenames: 'app:Bygning',
+      srsName: WFS_CRS, bbox, count: String(sample),
+    });
+    const res = await fetchImpl(`${MATRIKKEL_WFS_BASE}/wfs.matrikkelen-bygningspunkt?${params}`, { signal });
+    if (!res.ok) throw new Error(`Matrikkel WFS answered ${res.status}`);
+    for (const m of (await res.text()).matchAll(/kommunenummer>(\d{4})</g)) found.add(m[1]);
+  }));
+  return [...found].sort();
 }
 
 // Oslo's file is named by its county code (03), not its municipality number (0301).
@@ -57,11 +88,10 @@ export function findKommuneLink(atomXml, kommune, { projection = FILE_PROJECTION
   return null;
 }
 
-/** Building records (easting, northing in EPSG:25832) from a building GML text. */
+/** Building records (easting, northing in EPSG:25832) from a building GML (text or bytes). */
 export function parseBuildingsGml(text) {
   const out = [];
-  for (const m of text.matchAll(FEATURE_MEMBER)) {
-    const f = m[1];
+  for (const f of featureMembers(text)) {
     const pos = f.match(/<(?:[\w.-]+:)?pos>\s*([\d.-]+)\s+([\d.-]+)\s*</);
     if (!pos) continue;
     out.push({
@@ -77,11 +107,10 @@ export function parseBuildingsGml(text) {
   return out;
 }
 
-/** Address map (adresseId -> { street, number, postcode, city }) from an address GML text. */
+/** Address map (adresseId -> { street, number, postcode, city }) from an address GML (text or bytes). */
 export function parseAddressesGml(text) {
   const map = new Map();
-  for (const m of text.matchAll(FEATURE_MEMBER)) {
-    const f = m[1];
+  for (const f of featureMembers(text)) {
     const id = f.match(/adresseId>(\d+)</);
     if (!id) continue;
     const number = (tagValue(f, 'nummer') || '') + (tagValue(f, 'bokstav') || '');
@@ -95,19 +124,22 @@ export function parseAddressesGml(text) {
   return map;
 }
 
-/** The GML text inside a zip (the first .gml or .xml file). */
+/** The GML inside a zip (the first .gml or .xml file), as bytes. */
 export async function gmlFromZip(zipBytes) {
   const zip = await JSZip.loadAsync(zipBytes);
   const name = Object.keys(zip.files).find((n) => /\.(gml|xml)$/i.test(n));
   if (!name) throw new Error('No GML file in the Matrikkel zip');
-  return zip.file(name).async('string');
+  return zip.file(name).async('uint8array');
 }
 
 /**
  * Buildings and addresses for one municipality. Downloads go through `cache`
  * ({ get(key), put(key, bytes) }) so a municipality is fetched once.
  */
-export async function loadKommune(kommune, { fetchImpl = globalThis.fetch, signal, cache = memoryCache() } = {}) {
+const sessionCache = memoryCache();   // one download per municipality and session
+const https = (url) => String(url).replace(/^http:\/\/nedlasting\.geonorge\.no\//, 'https://nedlasting.geonorge.no/');
+
+export async function loadKommune(kommune, { fetchImpl = globalThis.fetch, signal, cache = memoryCache(), onStatus } = {}) {
   const atomFor = async (kind) => {
     const key = `atom:${kind}`;
     let xml = await cache.get(key);
@@ -125,7 +157,8 @@ export async function loadKommune(kommune, { fetchImpl = globalThis.fetch, signa
     const key = `zip:${link}`;
     let bytes = await cache.get(key);
     if (!bytes) {
-      const res = await fetchImpl(link, { signal });
+      onStatus?.(`Downloading Kartverket Matrikkel ${kind} (kommune ${kommune})...`);
+      const res = await fetchImpl(https(link), { signal });
       if (!res.ok) throw new Error(`Matrikkel ${kind} file answered ${res.status}`);
       bytes = new Uint8Array(await res.arrayBuffer());
       await cache.put(key, bytes);
@@ -152,7 +185,7 @@ export async function norwayBuildingsForArea(bounds, opts = {}) {
   const buildings = [];
   const addresses = new Map();
   for (const kommune of kommuner) {
-    const loaded = await loadKommune(kommune, opts);
+    const loaded = await loadKommune(kommune, { ...opts, cache: opts.cache ?? sessionCache });
     for (const b of loaded.buildings) if (insideBounds(b, bounds)) buildings.push(b);
     for (const [id, a] of loaded.addresses) addresses.set(id, a);
   }

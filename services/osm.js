@@ -1168,11 +1168,12 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
     if (endpoint !== OVERTURE_ENDPOINT && !halves && norwayBuildingsEnabled() && touchesNorway(bounds)) {
       onStatus?.("Adding buildings from the Kartverket Matrikkel...");
       try {
-        const area = await norwayBuildingsForArea(bounds, { signal });
+        const area = await norwayBuildingsForArea(bounds, { signal, onStatus });
         const merged = mergeNorwayBuildings(data, area.buildings, area.addresses, bounds);
         data = merged.data;
-        norwayBuildings = { kommuner: area.kommuner, added: merged.added, skipped: merged.skipped };
-        console.log(`[OSM] Matrikkel: ${merged.added} buildings added, ${merged.skipped} already mapped or outside the area.`);
+        norwayBuildings = { kommuner: area.kommuner, added: merged.added, enriched: merged.enriched, skipped: merged.skipped };
+        console.log(`[OSM] Matrikkel (kommune ${area.kommuner.join(', ') || 'none'}): ${merged.added} buildings added, type and address details on ${merged.enriched} OSM buildings, ${merged.skipped} left as they are.`);
+        onStatus?.(`Kartverket Matrikkel: ${merged.added} buildings added, details on ${merged.enriched}.`);
       } catch (error) {
         if (error?.name === "AbortError" || signal?.aborted) throw error;
         console.warn("[OSM] Matrikkel buildings unavailable; keeping OSM buildings only:", error?.message || error);
@@ -1187,7 +1188,7 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
         ? { overtureRelease: OVERTURE_RELEASE, attribution: OVERTURE_ATTRIBUTION }
         : {}),
       ...(overtureBuildings ? { overtureBuildings, attribution: OVERTURE_ATTRIBUTION } : {}),
-      ...(norwayBuildings ? { norwayBuildings, attribution: NORWAY_BUILDINGS_ATTRIBUTION } : {}),
+      ...(norwayBuildings ? { norwayBuildings, attribution: [overtureBuildings ? OVERTURE_ATTRIBUTION : null, NORWAY_BUILDINGS_ATTRIBUTION].filter(Boolean).join('; ') } : {}),
       ...(String(endpoint).includes(OSM_FILE_ENDPOINT) ? { osmFile: { name: getLoadedOsmFile()?.name, coverage: result.coverage, share: result.share, loadedAt: getLoadedOsmFile()?.loadedAt } } : {}),
       startedAt,
       completedAt: new Date().toISOString(),

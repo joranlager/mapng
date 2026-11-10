@@ -34,6 +34,12 @@
         </div>
         <p v-else-if="probing" class="text-micro text-gray-400 leading-tight">{{ t('map.hintChecking') }}</p>
 
+        <!-- Norway: the map's elevation and building details come from Kartverket -->
+        <p v-if="norwaySources" data-testid="norway-sources"
+          class="rounded border border-brand/40 bg-brand/5 px-2 py-1.5 text-micro leading-tight text-gray-700 dark:text-gray-200">
+          {{ t('map.norwaySources') }}
+        </p>
+
         <!-- Compare here: a 500 m square from each source at the selection's centre, as hillshades -->
         <div v-if="center" class="text-micro leading-tight">
           <button type="button" data-testid="compare-toggle" class="text-brand hover:underline" @click="toggleCompare">
@@ -150,6 +156,8 @@ import { Mountain, ChevronDown, AlertTriangle, Sparkles } from 'lucide-vue-next'
 import { boxAround, probeMapterhorn, probeGpxz } from '../../services/sourceAdvisor.js';
 import { mapterhornZoomFor, mapterhornMosaicBudget, mapterhornMetersPerPixel } from '../../services/mapterhorn.js';
 import { desktopApp } from '../../services/platform/desktop.js';
+import { norwayElevationEnabled } from '../../services/norway/kartverketDtm.js';
+import { insideNorway } from '../../services/norway/matrikkelBuildings.js';
 import { standardPatch, mapterhornPatch, gpxzPatch, hillshadeDataUrl } from '../../services/sourceCompare.js';
 
 const { t } = useI18n({ useScope: 'global' });
@@ -214,6 +222,13 @@ const coverage = computed(() => {
   const known = Number.isFinite(lat) && Number.isFinite(lng);
   const inside = (boxes) => !known || boxes.some(([s, w, n, e]) => lat >= s && lat <= n && lng >= w && lng <= e);
   return { usgs: inside(SOURCE_COVERAGE.usgs), kron86: inside(SOURCE_COVERAGE.kron86) };
+});
+
+// Norway: with "Best free", Kartverket's own model is read first (services/norway/kartverketDtm.js)
+const norwaySources = computed(() => {
+  const lat = Number(props.center?.lat), lng = Number(props.center?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || localElevationSource.value !== 'mapterhorn' || !norwayElevationEnabled()) return false;
+  return insideNorway(lat, lng);
 });
 
 const selectedOutsideCoverage = computed(() => (

@@ -7065,6 +7065,10 @@ function resolveElevationSourceLabel(terrainData, selectedElevationSource) {
   }
   if (normalized === 'gpxz') return 'GPXZ';
   if (normalized === 'mapterhorn') {
+    const kv = terrainData?.kartverketInfo;
+    if (kv && !kv.fallbackReason) {
+      return `Kartverket Høydedata DTM1 (Norway), ${Number(kv.metersPerPixel)} m, tile${kv.sourceTiles?.length > 1 ? 's' : ''} ${(kv.sourceTiles || []).join(', ')}, on ${Math.round((kv.validFraction || 0) * 100)}% of the area; global 30 m (AWS Terrain Tiles) elsewhere (© Kartverket, CC BY 4.0)`;
+    }
     const mh = terrainData?.mapterhornInfo;
     if (!mh || mh.fallbackReason) return `Best free (Mapterhorn): ${mh?.fallbackReason === 'no_lidar' ? 'no lidar here' : 'Mapterhorn not reachable'}, global 30 m (AWS Terrain Tiles) used`;
     return `Best free: Mapterhorn lidar, z${mh.zoom} (~${Number(mh.metersPerPixel).toFixed(1)} m), on ${Math.round(mh.lidarFraction * 100)}% of the area; global 30 m (AWS Terrain Tiles) elsewhere (© Mapterhorn and its open-data sources, mapterhorn.com/attribution)`;

@@ -271,10 +271,15 @@ export const resampleToMeterGrid = async (
                     const epsg = `EPSG:${item.epsgCode}`;
                     try {
                         if (!proj4.defs(epsg)) {
-                            const response = await fetch(`https://epsg.io/${item.epsgCode}.proj4`);
-                            if (response.ok) {
-                                const def = await response.text();
-                                proj4.defs(epsg, def);
+                            const builtIn = getBuiltInProj4(item.epsgCode);
+                            if (builtIn) {
+                                proj4.defs(epsg, builtIn);
+                            } else {
+                                const response = await fetch(`https://epsg.io/${item.epsgCode}.proj4`);
+                                if (response.ok) {
+                                    const def = await response.text();
+                                    proj4.defs(epsg, def);
+                                }
                             }
                         }
                         converter = proj4('EPSG:4326', epsg);
