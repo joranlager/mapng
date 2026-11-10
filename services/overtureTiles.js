@@ -618,7 +618,7 @@ const ringCentroid = (ring) => {
 };
 
 // Outer rings of the OSM building elements, keyed "w<id>" / "r<id>".
-const osmBuildingRings = (elements) => {
+export const osmBuildingRings = (elements) => {
   const rings = [];
   const byKey = new Map();
   for (const el of elements) {
@@ -634,7 +634,7 @@ const osmBuildingRings = (elements) => {
 };
 
 const GRID = 0.002;   // degrees (~200 m) per overlap-index cell
-const overlapIndex = (rings) => {
+export const overlapIndex = (rings) => {
   const cells = new Map();
   rings.forEach((ring, i) => {
     const b = ringBox(ring);
