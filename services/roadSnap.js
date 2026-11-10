@@ -51,7 +51,7 @@ const LEVEL_PER_M = 0.15;
 // I-295 slid 8 m onto its express lanes).
 const NEIGHBOUR_REACH_M = 30;
 const CLEAR_HIGHWAYS_SKIP = new Set(['footway', 'path', 'cycleway', 'bridleway', 'steps', 'pedestrian', 'corridor', 'elevator', 'proposed', 'construction', 'abandoned', 'razed']);
-const NODE_POINT_TYPES = new Set(['street_furniture', 'traffic_calming']);
+const NODE_POINT_TYPES = new Set(['street_furniture', 'traffic_calming', 'road_sign']);
 
 function sampleHeight(heightMap, width, height, x, y) {
     if (x < 0 || y < 0 || x > width - 1 || y > height - 1) return NO_DATA_VALUE;

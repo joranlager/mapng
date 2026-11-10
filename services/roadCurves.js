@@ -50,7 +50,7 @@ const MAX_TURN_RAD = (170 * Math.PI) / 180;
 // Arc sampling: at most this angle and this chord length per step.
 const ARC_STEP_RAD = (5 * Math.PI) / 180;
 const ARC_STEP_M = 1;
-const NODE_POINT_TYPES = new Set(['street_furniture', 'traffic_calming']);
+const NODE_POINT_TYPES = new Set(['street_furniture', 'traffic_calming', 'road_sign']);
 
 const isRoundableRoad = (f) => f?.type === 'road'
     && Array.isArray(f.geometry) && f.geometry.length >= 2

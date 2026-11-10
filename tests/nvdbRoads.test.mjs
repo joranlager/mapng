@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseWkt, propertyOf, fetchNvdbObjects, fetchNvdbRoadData, mergeNvdbRoads, norwayRoadsEnabled, NVDB_TYPES, NVDB_BASE,
+  parseWkt, propertyOf, fetchNvdbObjects, fetchNvdbRoadData, mergeNvdbRoads, norwayRoadsEnabled, surfaceFromMassetype, signCode, NVDB_TYPES, NVDB_BASE,
 } from '../services/norway/nvdbRoads.js';
 
 // A small area in Trondheim. One street runs north along lon 10.3940, a side street runs east along lat 63.4250.
@@ -159,4 +159,77 @@ test('signs, signals, speed bumps, lights and guard rails are added where OSM ha
 test('norwayRoadsEnabled is on unless switched off', () => {
   assert.equal(norwayRoadsEnabled({ getItem: () => null }), true);
   assert.equal(norwayRoadsEnabled({ getItem: () => '0' }), false);
+});
+
+test('every sign plate is kept as a node with its number, wording and facing', () => {
+  const point = (lat, lon) => `POINT Z (${lat} ${lon} 10)`;
+  const plate = (id, nr, extra = []) => obj(id, [prop('Skiltnummer', nr), ...extra], point(63.4250 + id * 0.0001, 10.3945));
+  const nvdb = { signPlate: [
+    plate(1, '372 - Parkering forbudt', [prop('Ansiktsside, rettet mot', 'Trafikk mot metreringsretning')]),
+    plate(2, '808 - Underskilt med annen tekst', [prop('Tekst', 'Gjelder ikke buss'), prop('Ansiktsside, rettet mot', 'Parallelt mot veg')]),
+    plate(3, '526.2 - Envegskjøring, plassert parallelt'),
+    plate(4, '906V - Hindermarkering, hinder til venstre'),
+    plate(5, '202 - Vikeplikt', [prop('Ansiktsside, rettet mot', 'Trafikk i metreringsretning')]),
+    obj(6, [prop('Ansiktsside, rettet mot', 'Tosidig')], point(63.4255, 10.3945)),   // no number: nothing to show
+  ] };
+  const { data, stats } = mergeNvdbRoads(osm(), nvdb, bounds);
+  const nodes = data.elements.filter((e) => e.tags?.['mapng:sign']);
+  assert.equal(stats.signs, 5);
+  assert.deepEqual(nodes.map((n) => n.tags['mapng:sign']), ['372', '808', '526.2', '906V', '202']);
+  assert.equal(nodes[0].tags['mapng:sign_name'], 'Parkering forbudt');
+  assert.equal(nodes[0].tags['mapng:sign_facing'], 'against');
+  assert.equal(nodes[0].tags.highway, undefined);
+  assert.equal(nodes[1].tags['mapng:sign_text'], 'Gjelder ikke buss');
+  assert.equal(nodes[1].tags['mapng:sign_facing'], 'toward');
+  assert.equal(nodes[4].tags.highway, 'give_way');   // also the junction hint
+  assert.equal(signCode(nvdb.signPlate[3]), '906V');
+});
+
+test('surface: NVDB\'s material becomes the OSM surface, the newest wearing course wins, stone paving in OSM stays', () => {
+  assert.equal(surfaceFromMassetype('Asfaltgrusbetong'), 'asphalt');
+  assert.equal(surfaceFromMassetype('Grus'), 'gravel');
+  assert.equal(surfaceFromMassetype('Asfaltert grus (Ag)'), 'asphalt');
+  assert.equal(surfaceFromMassetype('Betong'), 'concrete');
+  assert.equal(surfaceFromMassetype('Brostein'), 'sett');
+  assert.equal(surfaceFromMassetype('Belegningsstein, betong'), 'paving_stones');
+  assert.equal(surfaceFromMassetype('Ukjent'), null);
+  const nvdb = { surface: [
+    obj(1, [prop('Massetype', 'Grus'), prop('Dekkeleggingsdato', '1970-01-01')], nvdbMain()),
+    obj(2, [prop('Massetype', 'Asfaltgrusbetong'), prop('Dekkeleggingsdato', '2015-08-15'), prop('Lagtype', 'Slitelag')], nvdbMain()),
+    obj(3, [prop('Massetype', 'Grus'), prop('Dekkeleggingsdato', '2020-01-01'), prop('Lagtype', 'Bærelag')], nvdbMain()),   // not the top layer
+    obj(4, [prop('Massetype', 'Grus'), prop('Dekkeleggingsdato', '2001-01-01')], nvdbSide),
+  ] };
+  const { data, stats } = mergeNvdbRoads(osm(), nvdb, bounds);
+  assert.equal(data.elements[0].tags.surface, 'asphalt');
+  assert.equal(data.elements[1].tags.surface, 'gravel');
+  assert.equal(data.elements[2].tags.surface, 'asphalt');     // the footway beside the main street
+  assert.equal(stats.surface, 3);
+  const cobbled = { elements: [{ ...mainStreet, tags: { highway: 'secondary', surface: 'sett' } }] };
+  assert.equal(mergeNvdbRoads(cobbled, nvdb, bounds).data.elements[0].tags.surface, 'sett');
+});
+
+test('a pedestrian crossing becomes a way straight across its road, unless OSM has one there', () => {
+  const nvdb = { crossing: [
+    obj(1, [prop('Lysregulert', 'Nei'), prop('Hevet', 'Ja'), prop('Markering av striper', 'Malte striper')], 'POINT Z (63.4255 10.39405 -999999)'),
+    obj(2, [prop('Lysregulert', 'Ja'), prop('Hevet', 'Nei')], `POLYGON((63.42600 10.39395,63.42600 10.39405,63.42603 10.39405,63.42603 10.39395,63.42600 10.39395))`, true),
+    obj(3, [prop('Lysregulert', 'Nei')], 'POINT(63.4263 10.3940)'),             // OSM has this one (below)
+    obj(4, [prop('Lysregulert', 'Nei')], 'POINT(63.4255 10.3970)'),             // 150 m from any road
+  ] };
+  const osmCrossing = { type: 'node', id: 200, lat: 63.42631, lon: 10.3940, tags: { highway: 'crossing' } };
+  const { data, stats } = mergeNvdbRoads({ elements: [mainStreet, osmCrossing] }, nvdb, bounds);
+  const ways = data.elements.filter((e) => e.tags?.footway === 'crossing');
+  assert.equal(stats.crossings, 2);
+  assert.equal(ways.length, 2);
+  const [a, b] = ways;
+  assert.equal(a.tags.highway, 'footway'); assert.equal(a.tags.crossing, 'marked'); assert.equal(a.tags['crossing:markings'], 'zebra');
+  assert.equal(b.tags.crossing, 'traffic_signals');
+  // straight across a north-south road: constant latitude, spanning the road (7 m default) and 2.5 m past each edge
+  assert.equal(a.geometry.length, 3);
+  assert.ok(Math.abs(a.geometry[0].lat - a.geometry[2].lat) < 1e-7);
+  const span = Math.abs(a.geometry[0].lon - a.geometry[2].lon) / M_LON;
+  assert.ok(Math.abs(span - 12) < 0.05, `span ${span}`);
+  assert.ok(Math.abs(a.geometry[1].lon - 10.3940) < 1e-7);                        // its middle on the road's centre line
+  // the raised one is also a speed table
+  assert.equal(data.elements.filter((e) => e.tags?.traffic_calming === 'table').length, 1);
+  assert.equal(stats.bumps, 1);
 });

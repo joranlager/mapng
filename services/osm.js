@@ -306,6 +306,14 @@ export const parseOverpassResponse = (data, bounds) => {
   for (const el of data.elements) {
     if (el.type === "node") {
       if (el.tags) {
+        // a sign plate from NVDB (services/norway/nvdbRoads.js), stood up by services/norway/norwaySigns.js;
+        // a give-way or stop plate is also a junction hint, below
+        if (el.tags["mapng:sign"]) {
+          rawFeatures.push({
+            id: `sign_${el.id}`, type: "road_sign",
+            geometry: [{ lat: el.lat, lng: el.lon }], tags: el.tags,
+          });
+        }
         if (el.tags.traffic_calming && el.tags.traffic_calming !== "no") {
           // speed bumps, humps, tables, cushions (services/trafficCalming.js)
           rawFeatures.push({
@@ -1191,8 +1199,8 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
         data = merged.data;
         norwayRoads = merged.stats;
         const s = merged.stats;
-        console.log(`[OSM] NVDB: ${s.roads} roads (speed limit on ${s.maxspeed}, width on ${s.width}, lanes on ${s.lanes}); added ${s.giveWay} give-way and ${s.stop} stop signs, ${s.signals} signals, ${s.bumps} speed bumps, ${s.lights} street lights, ${s.guardRails} guard rails.`);
-        onStatus?.(`NVDB: speed limits on ${s.maxspeed} roads, widths on ${s.width}, ${s.giveWay + s.stop} signs.`);
+        console.log(`[OSM] NVDB: ${s.roads} roads (speed limit on ${s.maxspeed}, width on ${s.width}, lanes on ${s.lanes}), surface on ${s.surface} ways; ${s.signs} sign plates (${s.giveWay} give-way and ${s.stop} stop as junction hints), ${s.crossings} pedestrian crossings, ${s.signals} signals, ${s.bumps} speed bumps, ${s.lights} street lights, ${s.guardRails} guard rails.`);
+        onStatus?.(`NVDB: speed limits on ${s.maxspeed} roads, widths on ${s.width}, ${s.signs} signs, ${s.crossings} crossings.`);
       } catch (error) {
         if (error?.name === "AbortError" || signal?.aborted) throw error;
         console.warn("[OSM] NVDB road data unavailable; keeping OSM road data only:", error?.message || error);

@@ -1,12 +1,16 @@
 // Road data from NVDB (Nasjonal vegdatabank, Statens vegvesen) for map areas
-// in Norway: speed limits, road widths, lane counts, stop and give-way signs,
-// traffic signals, speed bumps, street lights and guard rails.
+// in Norway: speed limits, road widths, lane counts, road surface, every sign
+// plate, pedestrian crossings, traffic signals, speed bumps, street lights
+// and guard rails.
 //
 // The roads themselves stay OpenStreetMap's. NVDB's values are attached to
 // the OSM road they lie on (nearest NVDB line running the same way), and its
 // point objects are added as the OSM-style nodes the app already reads
 // (highway=stop, highway=give_way, highway=traffic_signals, traffic_calming,
-// highway=street_lamp) where OSM has none at that spot.
+// highway=street_lamp) where OSM has none at that spot. Every sign plate is
+// kept as a node tagged mapng:sign=<number> (services/norway/norwaySigns.js
+// stands them up in the export), and every pedestrian crossing becomes a
+// footway=crossing way across its road.
 //
 // API: NVDB API Les v4, https://nvdbapiles.atlas.vegvesen.no (no key).
 // With srid=4326 the box is given west,south,east,north and geometry comes
@@ -31,6 +35,8 @@ export const NVDB_TYPES = {
   speedBump: 103,        // Fartsdemper
   streetLight: 87,       // Belysningspunkt
   guardRail: 5,          // Rekkverk
+  crossing: 174,         // Gangfelt
+  surface: 241,          // Vegdekke
 };
 
 const PAGE_SIZE = 1000;
@@ -112,7 +118,9 @@ export async function fetchNvdbRoadData(bounds, opts = {}) {
 const projector = (bounds) => {
   const lat0 = (bounds.north + bounds.south) / 2, lon0 = (bounds.east + bounds.west) / 2;
   const kx = 111320 * Math.cos((lat0 * Math.PI) / 180), ky = 110540;
-  return (p) => [(p.lon - lon0) * kx, (p.lat - lat0) * ky];
+  const project = (p) => [(p.lon - lon0) * kx, (p.lat - lat0) * ky];
+  project.back = (x, y) => ({ lat: lat0 + y / ky, lon: lon0 + x / kx });
+  return project;
 };
 
 const CELL_M = 40;
@@ -128,24 +136,28 @@ function lineIndex(entries, project) {
       cells.get(k).push(seg);
     }
   };
-  for (const { value, geometry } of entries) {
+  for (const { value, geometry, rank = 0 } of entries) {
     for (const line of geometry?.lines || []) {
       for (let i = 0; i + 1 < line.length; i++) {
         const [ax, ay] = project(line[i]), [bx, by] = project(line[i + 1]);
         const len = Math.hypot(bx - ax, by - ay);
         if (len < 0.05) continue;
-        put({ ax, ay, bx, by, ux: (bx - ax) / len, uy: (by - ay) / len, len, value });
+        put({ ax, ay, bx, by, ux: (bx - ax) / len, uy: (by - ay) / len, len, value, rank });
       }
     }
   }
   return (x, y, dx, dy) => {
-    let best = null, bestD = MATCH_M;
+    // the closest piece; of pieces lying on the same line (within half a metre), the higher rank
+    let best = null, bestD = MATCH_M, bestRank = -Infinity;
     for (const seg of cells.get(`${Math.floor(x / CELL_M)},${Math.floor(y / CELL_M)}`) || []) {
       const cos = seg.ux * dx + seg.uy * dy;
       if (Math.abs(cos) < MATCH_COS) continue;
       const t = Math.max(0, Math.min(seg.len, (x - seg.ax) * seg.ux + (y - seg.ay) * seg.uy));
       const d = Math.hypot(x - (seg.ax + seg.ux * t), y - (seg.ay + seg.uy * t));
-      if (d < bestD) { bestD = d; best = { value: seg.value, along: cos > 0 }; }
+      if (d >= MATCH_M) continue;
+      if (d < bestD - 0.5 || (Math.abs(d - bestD) <= 0.5 && seg.rank > bestRank) || (!best)) {
+        bestD = Math.min(bestD, d); bestRank = seg.rank; best = { value: seg.value, along: cos > 0 };
+      }
     }
     return best;
   };
@@ -182,11 +194,17 @@ const drivable = (el) => el.type === 'way' && el.tags?.highway && !NON_DRIVEABLE
 const geometryOf = (o) => parseWkt(o?.geometri?.wkt);
 const number = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 
-// ---- NVDB points as OSM-style nodes -----------------------------------------
+// ---- what NVDB's values mean in OSM terms -----------------------------------
 
-// Skiltplate numbers the app has a use for (the sign's number is the start of "Skiltnummer").
-const SIGN_TAGS = { 202: { highway: 'give_way' }, 204: { highway: 'stop' } };
-const signCode = (o) => (String(propertyOf(o, 'Skiltnummer') || '').match(/^\s*(\d+)/) || [])[1] || null;
+// Skiltplate numbers that also work as junction hints for the app's own stop and give-way logic.
+const SIGN_HINTS = { 202: 'give_way', 204: 'stop' };
+/** A sign plate's number as written at the start of "Skiltnummer" ("526.2 - Envegskjøring ..." -> "526.2"; "906V - ..." -> "906V"). */
+export const signCode = (o) => (String(propertyOf(o, 'Skiltnummer') || '').match(/^\s*(\d+(?:\.\d+)*[A-Za-z]?)/) || [])[1] || null;
+const signName = (o) => String(propertyOf(o, 'Skiltnummer') || '').replace(/^[^-]*-\s*/, '').trim().slice(0, 80);
+const FACING = {
+  'Trafikk i metreringsretning': 'with', 'Trafikk mot metreringsretning': 'against',
+  'Parallelt mot veg': 'toward', 'Parallelt fra veg': 'away', Tosidig: 'both',
+};
 
 const BUMP = (type) => {
   const t = String(type || '').toLowerCase();
@@ -195,13 +213,27 @@ const BUMP = (type) => {
   return 'hump';
 };
 
-/** A grid of points: near(lat, lon, metres) -> whether one is that close; add(lat, lon). */
+/** NVDB's surface material (Vegdekke, "Massetype") as an OSM surface value, or null when it says nothing usable. */
+export function surfaceFromMassetype(value) {
+  const t = String(value || '').toLowerCase();
+  if (!t) return null;
+  if (/brostein|gatestein|kuppelstein/.test(t)) return 'sett';
+  if (/belegningsstein|betongstein|heller|naturstein|skifer/.test(t)) return 'paving_stones';
+  if (/asfalt|overflatebehandling|emulsjon|oljegrus|bitum|penetrert|topeka|mastiks/.test(t)) return 'asphalt';
+  if (/grus|pukk|knust|mekanisk stabilisert/.test(t)) return 'gravel';
+  if (/betong/.test(t)) return 'concrete';
+  if (/\btre\b|treverk|planke/.test(t)) return 'wood';
+  return null;
+}
+const STONE_PAVING = new Set(['sett', 'cobblestone', 'unhewn_cobblestone', 'paving_stones', 'bricks', 'brick']);
+const dateRank = (v) => Number(String(v || '').replace(/\D/g, '').slice(0, 8)) || 0;
+
+/** A grid of points: near(p, metres) -> whether one is that close; add(p). */
 function pointSet(project) {
   const cells = new Map();
   const CELL = 30;
-  const key = (x, y) => `${Math.floor(x / CELL)},${Math.floor(y / CELL)}`;
   return {
-    add(p) { const [x, y] = project(p); const k = key(x, y); if (!cells.has(k)) cells.set(k, []); cells.get(k).push([x, y]); },
+    add(p) { const [x, y] = project(p); const k = `${Math.floor(x / CELL)},${Math.floor(y / CELL)}`; if (!cells.has(k)) cells.set(k, []); cells.get(k).push([x, y]); },
     near(p, metres) {
       const [x, y] = project(p);
       const r = Math.ceil(metres / CELL);
@@ -213,19 +245,73 @@ function pointSet(project) {
   };
 }
 
+/** The drivable OSM roads as line pieces: nearest(x, y, reach) -> { cx, cy, ux, uy, d, tags } of the closest one. */
+function roadFinder(elements, project) {
+  const cells = new Map();
+  const CELL = 50;
+  for (const el of elements) {
+    if (!drivable(el)) continue;
+    for (let i = 0; i + 1 < el.geometry.length; i++) {
+      const [ax, ay] = project(el.geometry[i]), [bx, by] = project(el.geometry[i + 1]);
+      const len = Math.hypot(bx - ax, by - ay);
+      if (len < 0.05) continue;
+      const seg = { ax, ay, ux: (bx - ax) / len, uy: (by - ay) / len, len, tags: el.tags };
+      for (let x = Math.floor(Math.min(ax, bx) / CELL); x <= Math.floor(Math.max(ax, bx) / CELL); x++) {
+        for (let y = Math.floor(Math.min(ay, by) / CELL); y <= Math.floor(Math.max(ay, by) / CELL); y++) {
+          const k = `${x},${y}`;
+          if (!cells.has(k)) cells.set(k, []);
+          cells.get(k).push(seg);
+        }
+      }
+    }
+  }
+  return (x, y, reach) => {
+    let best = null;
+    const r = Math.ceil(reach / CELL);
+    for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
+      for (const seg of cells.get(`${Math.floor(x / CELL) + i},${Math.floor(y / CELL) + j}`) || []) {
+        const t = Math.max(0, Math.min(seg.len, (x - seg.ax) * seg.ux + (y - seg.ay) * seg.uy));
+        const cx = seg.ax + seg.ux * t, cy = seg.ay + seg.uy * t, d = Math.hypot(x - cx, y - cy);
+        if (d <= reach && (!best || d < best.d)) best = { cx, cy, ux: seg.ux, uy: seg.uy, d, tags: seg.tags };
+      }
+    }
+    return best;
+  };
+}
+
+const roadWidthOf = (tags) => {
+  const w = Number.parseFloat(tags?.width);
+  if (w >= 2.5 && w <= 45) return w;
+  const lanes = Number.parseInt(tags?.lanes, 10);
+  return lanes > 0 ? lanes * 3.3 : 7;
+};
+
+const centreOf = (g) => {
+  if (!g?.lines?.[0]?.length) return null;
+  const line = g.lines[0];
+  if (g.kind === 'point') return line[0];
+  if (g.kind === 'line') return line[Math.floor(line.length / 2)];
+  const ring = line.length > 1 ? line.slice(0, -1) : line;   // (a polygon's ring repeats its first point)
+  return { lat: ring.reduce((s, p) => s + p.lat, 0) / ring.length, lon: ring.reduce((s, p) => s + p.lon, 0) / ring.length };
+};
+
+const yes = (v) => String(v || '').trim().toLowerCase() === 'ja';
+
 /**
  * NVDB road data merged into live OSM `data` ({ elements }):
- * - roads: maxspeed, width and lanes from NVDB on every drivable OSM road NVDB covers
- *   (NVDB's value replaces OSM's; the tags set are listed in mapng:nvdb);
- * - points: give-way and stop signs, traffic signals, speed bumps and street lights added
- *   where OSM has none of that kind nearby; guard rails added as barrier ways.
+ * - roads: maxspeed, width, lanes and surface from NVDB on every OSM road NVDB covers
+ *   (NVDB's value replaces OSM's, except stone paving OSM names; the tags set are listed in mapng:nvdb);
+ * - signs: every sign plate as a node tagged mapng:sign (number), mapng:sign_text, mapng:sign_facing;
+ *   give-way (202) and stop (204) plates also as the junction hints the app reads, where OSM has none nearby;
+ * - pedestrian crossings as footway=crossing ways across their road, where OSM has none there;
+ * - traffic signals, speed bumps and street lights where OSM has none nearby; guard rails as barrier ways.
  * Returns { data, stats }; the input is not mutated.
  */
 export function mergeNvdbRoads(data, nvdb, bounds) {
   const elements = [...(data?.elements || [])];
   const project = projector(bounds);
   const inside = (p) => p.lat >= bounds.south && p.lat <= bounds.north && p.lon >= bounds.west && p.lon <= bounds.east;
-  const stats = { roads: 0, maxspeed: 0, width: 0, lanes: 0, giveWay: 0, stop: 0, signals: 0, bumps: 0, lights: 0, guardRails: 0 };
+  const stats = { roads: 0, maxspeed: 0, width: 0, lanes: 0, surface: 0, signs: 0, giveWay: 0, stop: 0, crossings: 0, signals: 0, bumps: 0, lights: 0, guardRails: 0 };
 
   // -- lines
   const speeds = lineIndex((nvdb.speedLimit || []).map((o) => ({ value: number(propertyOf(o, 'Fartsgrense')), geometry: geometryOf(o) })).filter((e) => e.value > 0), project);
@@ -237,15 +323,23 @@ export function mergeNvdbRoads(data, nvdb, bounds) {
     value: { total: number(propertyOf(o, 'Antall kjørefelt')) || 0, along: number(propertyOf(o, 'Antall kjørefelt med metreringsretning')) || 0, against: number(propertyOf(o, 'Antall kjørefelt mot metreringsretning')) || 0 },
     geometry: geometryOf(o),
   })).filter((e) => e.value.total > 0), project);
+  // (the wearing course, the newest where several lie on the same stretch)
+  const surfaces = lineIndex((nvdb.surface || []).filter((o) => { const layer = propertyOf(o, 'Lagtype'); return !layer || /slitelag/i.test(layer); })
+    .map((o) => ({ value: surfaceFromMassetype(propertyOf(o, 'Massetype')), geometry: geometryOf(o), rank: dateRank(propertyOf(o, 'Dekkeleggingsdato')) })).filter((e) => e.value), project);
 
   elements.forEach((el, index) => {
-    if (!drivable(el)) return;
+    const road = drivable(el);
+    const anyWay = el.type === 'way' && el.tags?.highway && el.tags.highway !== 'steps' && el.tags.area !== 'yes' && el.geometry?.length >= 2;
+    if (!anyWay) return;
     const samples = samplesAlong(el.geometry, project);
     const total = samples.reduce((s, p) => s + p.weight, 0);
     if (!(total > 0)) return;
-    const speedVotes = new Map(), laneVotes = new Map(), widthPairs = [], oldWidthPairs = [];
-    let speedW = 0, laneW = 0, widthW = 0, oldWidthW = 0;
+    const speedVotes = new Map(), laneVotes = new Map(), surfaceVotes = new Map(), widthPairs = [], oldWidthPairs = [];
+    let speedW = 0, laneW = 0, widthW = 0, oldWidthW = 0, surfaceW = 0;
     for (const p of samples) {
+      const sf = surfaces(p.x, p.y, p.dx, p.dy);
+      if (sf) { surfaceVotes.set(sf.value, (surfaceVotes.get(sf.value) || 0) + p.weight); surfaceW += p.weight; }
+      if (!road) continue;
       const s = speeds(p.x, p.y, p.dx, p.dy);
       if (s) { speedVotes.set(s.value, (speedVotes.get(s.value) || 0) + p.weight); speedW += p.weight; }
       const l = lanes(p.x, p.y, p.dx, p.dy);
@@ -274,10 +368,15 @@ export function mergeNvdbRoads(data, nvdb, bounds) {
       const width = weightedMedian(pairs) * share;
       if (width >= 2.5) extra.width = String(Math.round(width * 10) / 10);
     }
+    // (stone paving named in OSM is finer knowledge than NVDB's wearing course: kept)
+    if (surfaceW / total >= MIN_COVER && !STONE_PAVING.has(el.tags.surface)) {
+      const surface = weightedMode(surfaceVotes);
+      if (surface !== el.tags.surface) extra.surface = surface;
+    }
     const set = Object.keys(extra);
     if (!set.length) return;
-    elements[index] = { ...el, tags: { ...el.tags, ...extra, 'mapng:nvdb': set.join(';') } };
-    stats.roads++;
+    elements[index] = { ...el, tags: { ...el.tags, ...extra, 'mapng:nvdb': [...String(el.tags['mapng:nvdb'] || '').split(';').filter(Boolean), ...set].join(';') } };
+    if (road) stats.roads++;
     for (const k of set) stats[k]++;
   });
 
@@ -287,23 +386,78 @@ export function mergeNvdbRoads(data, nvdb, bounds) {
   const addNodes = (objects, tagsFor, near, metres, count) => {
     for (const o of objects || []) {
       const tags = tagsFor(o);
-      const p = geometryOf(o)?.lines?.[0]?.[0];
+      const p = centreOf(geometryOf(o));
       if (!tags || !p || !inside(p) || near.near(p, metres)) continue;
       near.add(p);
       elements.push({ type: 'node', id: id--, lat: p.lat, lon: p.lon, tags: { ...tags, 'mapng:source': 'nvdb', 'nvdb:id': String(o.id) } });
       count(tags);
     }
   };
-  const signsNear = { give_way: existing((t) => t.highway === 'give_way'), stop: existing((t) => t.highway === 'stop') };
-  for (const kind of ['give_way', 'stop']) {
-    addNodes((nvdb.signPlate || []).filter((o) => SIGN_TAGS[signCode(o)]?.highway === kind),
-      (o) => ({ ...SIGN_TAGS[signCode(o)], traffic_sign: `NO:${signCode(o)}` }), signsNear[kind], 12,
-      () => { stats[kind === 'stop' ? 'stop' : 'giveWay']++; });
+
+  // every sign plate, where it stands; 202 and 204 also as junction hints unless OSM already has one there
+  const hintNear = { give_way: existing((t) => t.highway === 'give_way'), stop: existing((t) => t.highway === 'stop') };
+  for (const o of nvdb.signPlate || []) {
+    const code = signCode(o);
+    const p = centreOf(geometryOf(o));
+    if (!code || !p || !inside(p)) continue;
+    const tags = { 'mapng:sign': code, 'mapng:sign_name': signName(o) };
+    const text = String(propertyOf(o, 'Tekst') ?? '').trim();
+    if (text) tags['mapng:sign_text'] = text.slice(0, 60);
+    const facing = FACING[propertyOf(o, 'Ansiktsside, rettet mot')];
+    if (facing) tags['mapng:sign_facing'] = facing;
+    const hint = SIGN_HINTS[code];
+    if (hint && !hintNear[hint].near(p, 12)) {
+      hintNear[hint].add(p);
+      tags.highway = hint;
+      tags.traffic_sign = `NO:${code}`;
+      stats[hint === 'stop' ? 'stop' : 'giveWay']++;
+    }
+    elements.push({ type: 'node', id: id--, lat: p.lat, lon: p.lon, tags: { ...tags, 'mapng:source': 'nvdb', 'nvdb:id': String(o.id) } });
+    stats.signs++;
   }
+
   addNodes(nvdb.signals, (o) => ({ highway: 'traffic_signals', ...(propertyOf(o, 'Bruksområde') === 'Gangfelt' ? { crossing: 'traffic_signals' } : {}) }),
     existing((t) => t.highway === 'traffic_signals'), 30, () => { stats.signals++; });
-  addNodes(nvdb.speedBump, (o) => ({ traffic_calming: BUMP(propertyOf(o, 'Type')) }), existing((t) => t.traffic_calming && t.traffic_calming !== 'no'), 10, () => { stats.bumps++; });
+  const bumpsNear = existing((t) => t.traffic_calming && t.traffic_calming !== 'no');
+  addNodes(nvdb.speedBump, (o) => ({ traffic_calming: BUMP(propertyOf(o, 'Type')) }), bumpsNear, 10, () => { stats.bumps++; });
   addNodes(nvdb.streetLight, () => ({ highway: 'street_lamp' }), existing((t) => t.highway === 'street_lamp'), 6, () => { stats.lights++; });
+
+  // -- pedestrian crossings: a short way straight across the road at the crossing's place
+  const crossingsNear = pointSet(project);
+  for (const el of elements) {
+    if (el.type === 'node' && el.tags?.highway === 'crossing') crossingsNear.add(el);
+    else if (el.type === 'way' && (el.tags?.footway === 'crossing' || el.tags?.cycleway === 'crossing' || el.tags?.path === 'crossing')) for (const p of el.geometry || []) crossingsNear.add(p);
+  }
+  const nearestRoad = roadFinder(elements, project);
+  for (const o of nvdb.crossing || []) {
+    const p = centreOf(geometryOf(o));
+    if (!p || !inside(p)) continue;
+    const [x, y] = project(p);
+    const road = nearestRoad(x, y, 15);
+    if (!road) continue;
+    const at = project.back(road.cx, road.cy);
+    if (crossingsNear.near(at, 8)) continue;
+    crossingsNear.add(at);
+    const half = roadWidthOf(road.tags) / 2 + 2.5;
+    const unmarked = /ingen|uten|ikke/i.test(String(propertyOf(o, 'Markering av striper') || ''));
+    elements.push({
+      type: 'way', id: id--,
+      tags: {
+        highway: 'footway', footway: 'crossing',
+        crossing: unmarked ? 'unmarked' : yes(propertyOf(o, 'Lysregulert')) ? 'traffic_signals' : 'marked',
+        ...(unmarked ? {} : { 'crossing:markings': 'zebra' }),
+        'mapng:source': 'nvdb', 'nvdb:id': String(o.id),
+      },
+      geometry: [project.back(road.cx + road.uy * half, road.cy - road.ux * half), at, project.back(road.cx - road.uy * half, road.cy + road.ux * half)],
+    });
+    stats.crossings++;
+    // (a raised crossing is also a speed table)
+    if (yes(propertyOf(o, 'Hevet')) && !bumpsNear.near(at, 10)) {
+      bumpsNear.add(at);
+      elements.push({ type: 'node', id: id--, lat: at.lat, lon: at.lon, tags: { traffic_calming: 'table', 'mapng:source': 'nvdb', 'nvdb:id': String(o.id) } });
+      stats.bumps++;
+    }
+  }
 
   // -- guard rails (their own surveyed line)
   for (const o of nvdb.guardRail || []) {

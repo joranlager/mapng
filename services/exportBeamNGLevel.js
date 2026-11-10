@@ -75,6 +75,7 @@ import {
 } from './beamngMapNavigation.js';
 import { resolveRoadRulesAt } from './countryRules.js';
 import { buildRoadSignProps } from './roadSigns.js';
+import { norwaySignsEnabled, loadSignArt, planNorwaySigns, buildNorwaySignAssets } from './norway/norwaySigns.js';
 import { generateRoadLamps } from './streetLamps.js';
 import { buildIngameProbes } from './ingameProbes.js';
 import { smoothLine } from './lineSmoothing.js';
@@ -13191,7 +13192,35 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
   const sidewalksDae = sidewalkTileDaes.length > 0;
   // signs off the drawn roads (onto the verge, the sidewalk or the median)
   // and on the finished ground (settleSigns)
-  const settled = settleSigns([...buildRoadSignProps(exportTerrainData, squareSize, {
+  // Norway: every sign plate NVDB records, where it stands (services/norway/norwaySigns.js). They take the place
+  // of the signs worked out from the road layout; without the sign pictures the worked-out signs stay.
+  let norwaySigns = null;
+  if (norwaySignsEnabled() && (exportTerrainData.osmFeatures || []).some((f) => f.type === 'road_sign')) {
+    try {
+      const art = await loadSignArt();
+      if (!art) {
+        console.log(`${BEAMNG_EXPORT_SERVICE_LOG} Norwegian signs: no sign pictures in /norway_signs (scripts/norway/fetch_sign_art.py fetches them); the signs worked out from the roads are used.`);
+      } else {
+        const plan = planNorwaySigns(exportTerrainData.osmFeatures, {
+          toWorld: (lat, lng) => geoToWorldPoint(lat, lng, exportTerrainData, squareSize, 0),
+          groundAt: (x, y) => getTerrainHeightAtWorldXY(x, y, exportTerrainData, squareSize),
+          roads: groundCarriageways.map((cw) => ({ nodes: cw.nodes, half: cw.half })),
+          signs: art.signs,
+          leftHandTraffic: !!exportTerrainData?.roadRules?.leftHandTraffic,
+        });
+        const assets = plan.plates.length ? await buildNorwaySignAssets(plan, { levelName, persistentId: generatePersistentId, rotationMatrixFromYaw }) : null;
+        if (assets?.objects.length) {
+          norwaySigns = { ...assets, plan };
+          const missing = [...plan.missing].sort((a, b) => b[1] - a[1]);
+          console.log(`${BEAMNG_EXPORT_SERVICE_LOG} Norwegian signs: ${plan.plates.length} plates on ${plan.posts.length} posts, ${plan.faces.size} different faces; ${missing.reduce((n, m) => n + m[1], 0)} of ${plan.total} left out for want of a picture${missing.length ? ` (${missing.slice(0, 12).map(([c, n]) => `${c} x${n}`).join(', ')})` : ''}.`);
+        }
+      }
+    } catch (error) {
+      console.warn(`${BEAMNG_EXPORT_SERVICE_LOG} Norwegian signs could not be made; the signs worked out from the roads are used:`, error?.message || error);
+      norwaySigns = null;
+    }
+  }
+  const settled = settleSigns(norwaySigns ? [] : [...buildRoadSignProps(exportTerrainData, squareSize, {
     style: getMarkingStyle(exportTerrainData.roadRules),
   }).props, ...calming.signs, ...curveWarnings.props], {
     index: buildCarriagewayIndex(groundCarriageways),
@@ -13214,6 +13243,7 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
     // (a bare plate on its post)
     return plate ? [obj, { ...obj, name: `sign_post_${i}`, persistentId: generatePersistentId(), position: base, shapeName: PROP_SHAPES[plate.post].shapeFile }] : [obj];
   });
+  if (norwaySigns) signObjects.push(...norwaySigns.objects);
   if (settled.moved || settled.dropped) console.log(`${BEAMNG_EXPORT_SERVICE_LOG} Signs: ${settled.moved} moved off the road, ${settled.dropped} left out (no ground beside it).`);
   const trafficSignalObjects = buildTrafficSignalObjects(signalProps);
   const streetFurnitureObjects = buildStreetFurnitureObjects(exportTerrainData, squareSize, biome, {
@@ -14121,6 +14151,10 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
   // linked sign meshes render as bare metal. See getSignRuntimeMaterialDefs.
   if (signObjects.length > 0) {
     zip.file(`${base}/map_assets/official_assets/signs_materials/main.materials.json`, JSON.stringify(getSignRuntimeMaterialDefs(), null, 2));
+  }
+  // Norwegian sign plates: their shapes, pictures and materials
+  if (norwaySigns) {
+    for (const file of norwaySigns.files) zip.file(`${base}/${file.path}`, await toZipBinary(file.data));
   }
 
   // Fuel station mesh materials (eca_gastation_pumps / eca_charging_station).
