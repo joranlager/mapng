@@ -27,6 +27,10 @@ test('resolveArt falls back to plainer numbers', () => {
   assert.equal(resolveArt('906V', signs), '906');
   assert.equal(resolveArt('999', signs), null);
   assert.equal(resolveArt('202', null), null);
+  // a number that only exists in variants takes the first
+  assert.equal(resolveArt('521', { '521.2': {}, '521.1': {}, '5210': {} }), '521.1');
+  assert.equal(resolveArt('306', { '306.10': {}, '306.0': {}, '306.1': {} }), '306.0');
+  assert.equal(resolveArt('906V', { '906.2': {} }), '906.2');
 });
 
 test('faceFor: pictures, worded plates and speed limits', () => {

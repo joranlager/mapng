@@ -93,6 +93,117 @@ def picture_size(data):
     return None
 
 
+def _lzw(min_code, data, count):
+    clear, end = 1 << min_code, (1 << min_code) + 1
+    table = {i: bytes([i]) for i in range(clear)}
+    size, next_code, prev = min_code + 1, end + 1, None
+    out = bytearray()
+    bits = nbits = 0
+    for byte in data:
+        bits |= byte << nbits
+        nbits += 8
+        while nbits >= size:
+            code = bits & ((1 << size) - 1)
+            bits >>= size
+            nbits -= size
+            if code == clear:
+                table = {i: bytes([i]) for i in range(clear)}
+                size, next_code, prev = min_code + 1, end + 1, None
+                continue
+            if code == end:
+                return out
+            if prev is None:
+                entry = table.get(code, b"\x00")
+            else:
+                entry = table[code] if code in table else prev + prev[:1]
+                if next_code < 4096:
+                    table[next_code] = prev + entry[:1]
+                    next_code += 1
+            out += entry
+            prev = entry
+            if next_code == (1 << size) and size < 12:
+                size += 1
+            if len(out) >= count:
+                return out
+    return out
+
+
+def gif_to_png(data):
+    """A GIF's first picture as PNG bytes (with its transparency), or None. So every runtime can read it."""
+    try:
+        if data[:6] not in (b"GIF87a", b"GIF89a"):
+            return None
+        width, height, flags = struct.unpack("<HHB", data[6:11])
+        pos = 13
+        palette = None
+        if flags & 0x80:
+            n = 3 * (2 << (flags & 7))
+            palette = data[pos:pos + n]
+            pos += n
+        transparent = None
+        while pos < len(data):
+            block = data[pos]
+            pos += 1
+            if block == 0x21:
+                label = data[pos]
+                pos += 1
+                if label == 0xF9 and data[pos] >= 4 and data[pos + 1] & 1:
+                    transparent = data[pos + 4]
+                while True:
+                    size = data[pos]
+                    pos += 1
+                    if size == 0:
+                        break
+                    pos += size
+            elif block == 0x2C:
+                x, y, w, h, f = struct.unpack("<HHHHB", data[pos:pos + 9])
+                pos += 9
+                table = palette
+                if f & 0x80:
+                    n = 3 * (2 << (f & 7))
+                    table = data[pos:pos + n]
+                    pos += n
+                min_code = data[pos]
+                pos += 1
+                packed = bytearray()
+                while True:
+                    size = data[pos]
+                    pos += 1
+                    if size == 0:
+                        break
+                    packed += data[pos:pos + size]
+                    pos += size
+                if not table or not (1 <= min_code <= 11):
+                    return None
+                indices = _lzw(min_code, packed, w * h)
+                if f & 0x40:   # interlaced: rows 0, 8, 16..; 4, 12..; 2, 6..; 1, 3..
+                    order = [r for start, step in ((0, 8), (4, 8), (2, 4), (1, 2)) for r in range(start, h, step)]
+                else:
+                    order = list(range(h))
+                rgba = bytearray(width * height * 4)
+                for i, row in enumerate(order):
+                    if y + row >= height:
+                        continue
+                    line = indices[i * w:(i + 1) * w]
+                    for col, index in enumerate(line):
+                        if x + col >= width or index == transparent or index * 3 + 2 >= len(table):
+                            continue
+                        o = ((y + row) * width + x + col) * 4
+                        rgba[o:o + 4] = bytes((table[index * 3], table[index * 3 + 1], table[index * 3 + 2], 255))
+                import zlib
+
+                def chunk(tag, body):
+                    return struct.pack(">I", len(body)) + tag + body + struct.pack(">I", zlib.crc32(tag + body) & 0xFFFFFFFF)
+                raw = b"".join(b"\x00" + bytes(rgba[r * width * 4:(r + 1) * width * 4]) for r in range(height))
+                return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+                        + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+            else:
+                break
+    except Exception:
+        return None
+    return None
+
+
 def extension_of(name_or_url, data=b""):
     ext = os.path.splitext(urllib.parse.urlparse(name_or_url).path)[1].lower()
     if ext in EXTENSIONS:
@@ -293,6 +404,10 @@ def main():
         ext = extension_of(origin, data)
         if not ext:
             return False
+        if ext == ".gif":      # (as PNG: every runtime of the app reads that)
+            png = gif_to_png(data)
+            if png:
+                data, ext = png, ".png"
         file = re.sub(r"[^0-9A-Za-z.]", "_", code) + ext
         with open(os.path.join(out_dir, file), "wb") as f:
             f.write(data)

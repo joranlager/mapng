@@ -53,7 +53,8 @@ export const forgetSignArt = () => { artLoading = null; };
 
 /**
  * The picture for a sign number: its own, else its number without the trailing
- * letter, else without its last sub-number ("808.319" -> "808"), or null.
+ * letter, else without its last sub-number ("808.319" -> "808"), else the first
+ * variant of the number ("521" -> "521.1", "306" -> "306.0"), or null.
  */
 export function resolveArt(code, signs) {
   if (!code || !signs) return null;
@@ -66,7 +67,9 @@ export function resolveArt(code, signs) {
     if (key.includes('.')) { key = key.slice(0, key.lastIndexOf('.')); continue; }
     break;
   }
-  return null;
+  const variants = Object.keys(signs).filter((k) => k.startsWith(`${key}.`))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return variants[0] || null;
 }
 
 /** A plate's width in metres, by the kind of sign its number says it is (medium sizes). */
