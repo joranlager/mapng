@@ -3,8 +3,10 @@
 // it stands, on a post, facing its traffic.
 //
 // A plate is a flat panel with the sign's picture as its texture. The pictures
-// are files in the app's /norway_signs folder (one PNG per sign number, listed
-// in index.json; scripts/norway/fetch_sign_art.py fills the folder). Plates
+// are files in the app's /norway_signs folder (one per sign number, listed in
+// index.json; scripts/norway/fetch_sign_art.py fills the folder from the NVDB
+// Datakatalog and Skiltforskriften). A picture is redrawn as a PNG for the
+// level, and a white surround (the regulation's pictures have one) is cleared. Plates
 // that carry their own wording (underskilt, 8xx) and speed limits with no
 // picture of their own are drawn here. A sign number with no picture is left
 // out and counted.
@@ -33,7 +35,7 @@ export function norwaySignsEnabled(storage = globalThis.localStorage) {
 }
 
 let artLoading = null;
-/** The sign pictures the app has: { signs: { '202': { file, w, h }, ... } }, or null when there are none. */
+/** The sign pictures the app has: { signs: { '202': { file, w?, h? }, ... } }, or null when there are none. */
 export function loadSignArt({ fetchImpl = globalThis.fetch, url = NORWAY_SIGNS_INDEX_URL } = {}) {
   if (!artLoading) {
     artLoading = (async () => {
@@ -85,6 +87,9 @@ export function signWidthMetres(code, aspect = 1) {
 const isTextPlate = (code) => Math.floor((Number.parseFloat(code) || 0) / 100) === 8;
 const safe = (s) => String(s).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'x';
 
+/** A picture's height / width (1 when the index does not say). */
+const aspectOf = (entry) => (entry?.w > 0 && entry?.h > 0 ? entry.h / entry.w : 1);
+
 /** FNV-1a, for a short stable name of a drawn face. */
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
 
@@ -96,7 +101,7 @@ export function faceFor(code, text, signs) {
   const speed = /^(362|366)(\.|$)/.test(code) ? Number.parseInt(String(text || code.split('.')[1] || ''), 10) : NaN;
   if (Number.isFinite(speed) && speed > 0 && speed <= 130) {
     const own = signs?.[`${code.split('.')[0]}.${speed}`];
-    if (own) return { key: `art_${safe(`${code.split('.')[0]}.${speed}`)}`, kind: 'art', file: own.file, aspect: own.h / own.w };
+    if (own) return { key: `art_${safe(`${code.split('.')[0]}.${speed}`)}`, kind: 'art', file: own.file, aspect: aspectOf(own) };
     if (code.startsWith('362')) return { key: `speed_${speed}`, kind: 'speed', value: speed, aspect: 1 };
   }
   if (isTextPlate(code) && text) {
@@ -104,7 +109,7 @@ export function faceFor(code, text, signs) {
     return { key: `text_${hash(String(text))}`, kind: 'text', text: String(text), aspect: 0.22 + 0.2 * lines };
   }
   const art = resolveArt(code, signs);
-  if (art) return { key: `art_${safe(art)}`, kind: 'art', file: signs[art].file, aspect: signs[art].h / signs[art].w };
+  if (art) return { key: `art_${safe(art)}`, kind: 'art', file: signs[art].file, aspect: aspectOf(signs[art]) };
   if (text) {
     const lines = Math.min(3, Math.max(1, Math.ceil(String(text).length / 14)));
     return { key: `text_${hash(String(text))}`, kind: 'text', text: String(text), aspect: 0.22 + 0.2 * lines };
@@ -342,6 +347,55 @@ export function drawTextFace(text, aspect) {
 
 const canvasPng = (canvas) => new Promise((resolve) => canvas.toBlob((b) => resolve(b || null), 'image/png'));
 
+const MIME = { png: 'image/png', gif: 'image/gif', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp' };
+const TEXTURE_PX = 256;
+
+/** A white surround, reached from the picture's edge, made clear (the sign's own white field is fenced in by its rim). */
+export function clearSurround(pixels, w, h) {
+  const white = (i) => pixels[i * 4 + 3] > 200 && pixels[i * 4] > 236 && pixels[i * 4 + 1] > 236 && pixels[i * 4 + 2] > 236;
+  if (![0, w - 1, (h - 1) * w, h * w - 1].some(white)) return false;
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  const visit = (i) => { if (!seen[i] && white(i)) { seen[i] = 1; stack.push(i); } };
+  for (let x = 0; x < w; x++) { visit(x); visit((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { visit(y * w); visit(y * w + w - 1); }
+  while (stack.length) {
+    const i = stack.pop();
+    pixels[i * 4 + 3] = 0;
+    const x = i % w;
+    if (x > 0) visit(i - 1);
+    if (x < w - 1) visit(i + 1);
+    if (i >= w) visit(i - w);
+    if (i < (h - 1) * w) visit(i + w);
+  }
+  return true;
+}
+
+/** A sign picture as the plate's PNG: redrawn 256 px wide with its white surround cleared; as it is when it can't be redrawn and is a PNG. */
+async function plateTexture(bytes, file) {
+  const ext = String(file).split('.').pop().toLowerCase();
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: MIME[ext] || 'application/octet-stream' }));
+      const w = TEXTURE_PX, h = Math.max(8, Math.round((TEXTURE_PX * bitmap.height) / Math.max(1, bitmap.width)));
+      const canvas = newCanvas(w, h);
+      if (canvas) {
+        const g = canvas.getContext('2d');
+        g.clearRect?.(0, 0, w, h);
+        g.drawImage(bitmap, 0, 0, w, h);
+        bitmap.close?.();
+        if (g.getImageData && g.putImageData) {
+          const image = g.getImageData(0, 0, w, h);
+          if (image?.data && clearSurround(image.data, w, h)) g.putImageData(image, 0, 0);
+        }
+        const blob = await canvasPng(canvas);
+        if (blob) return new Uint8Array(await blob.arrayBuffer());
+      }
+    } catch { /* not a picture this can read: below */ }
+  }
+  return ext === 'png' ? bytes : null;
+}
+
 /**
  * The files of the signs planned: { files: [{ path, data }], objects: [TSStatic ...], left: [face keys with no picture] }.
  * Paths are relative to the level's folder. opts: { levelName, fetchImpl, persistentId(), rotationMatrixFromYaw(yaw) }
@@ -355,7 +409,7 @@ export async function buildNorwaySignAssets(plan, { levelName, fetchImpl = globa
     try {
       if (face.kind === 'art') {
         const res = await fetchImpl(`/norway_signs/${face.file}`);
-        if (res.ok) data = new Uint8Array(await res.arrayBuffer());
+        if (res.ok) data = await plateTexture(new Uint8Array(await res.arrayBuffer()), face.file);
       } else {
         const canvas = face.kind === 'speed' ? drawSpeedFace(face.value) : drawTextFace(face.text, face.aspect);
         const blob = canvas ? await canvasPng(canvas) : null;

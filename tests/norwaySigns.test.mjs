@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resolveArt, faceFor, signWidthMetres, planNorwaySigns, buildSignPlateDAE, buildSignPostDAE, signMaterialDefs,
-  buildNorwaySignAssets, loadSignArt, forgetSignArt, norwaySignsEnabled, faceMaterialName, SIGN_BACK_MATERIAL, SIGN_ASSET_DIR,
+  buildNorwaySignAssets, loadSignArt, forgetSignArt, norwaySignsEnabled, faceMaterialName, clearSurround, SIGN_BACK_MATERIAL, SIGN_ASSET_DIR,
 } from '../services/norway/norwaySigns.js';
 import { parseOverpassResponse } from '../services/osm.js';
 
@@ -167,4 +167,27 @@ test('the map data parser keeps sign plates as their own features, and a give-wa
   const hints = features.filter((f) => f.type === 'street_furniture');
   assert.equal(hints.length, 1);
   assert.equal(hints[0].tags.highway, 'give_way');
+});
+
+test('a picture with no size in the index is taken as square', () => {
+  assert.equal(faceFor('110', undefined, { 110: { file: '110.gif' } }).aspect, 1);
+  assert.equal(faceFor('110', undefined, { 110: { file: '110.gif' } }).file, '110.gif');
+});
+
+test('clearSurround clears the white around a sign, not the white inside its rim', () => {
+  // 7 x 7: white surround, a red ring (a 5 x 5 square's edge), a white middle
+  const W = 7, px = new Uint8ClampedArray(W * W * 4);
+  const set = (x, y, r, g, b) => px.set([r, g, b, 255], (y * W + x) * 4);
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+    const ring = (x >= 1 && x <= 5 && y >= 1 && y <= 5) && (x === 1 || x === 5 || y === 1 || y === 5);
+    if (ring) set(x, y, 200, 16, 46); else set(x, y, 255, 255, 255);
+  }
+  assert.equal(clearSurround(px, W, W), true);
+  const alpha = (x, y) => px[(y * W + x) * 4 + 3];
+  assert.equal(alpha(0, 0), 0); assert.equal(alpha(6, 3), 0); assert.equal(alpha(3, 6), 0);   // the surround
+  assert.equal(alpha(1, 1), 255);                                                              // the rim
+  assert.equal(alpha(3, 3), 255);                                                              // the white field inside
+  // a picture with no white corner is left alone
+  const blue = new Uint8ClampedArray(4 * 4 * 4).fill(255).map((v, i) => (i % 4 === 0 ? 0 : v));
+  assert.equal(clearSurround(blue, 4, 4), false);
 });

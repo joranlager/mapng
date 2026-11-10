@@ -13199,7 +13199,7 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
     try {
       const art = await loadSignArt();
       if (!art) {
-        console.log(`${BEAMNG_EXPORT_SERVICE_LOG} Norwegian signs: no sign pictures in /norway_signs (scripts/norway/fetch_sign_art.py fetches them); the signs worked out from the roads are used.`);
+        console.log(`${BEAMNG_EXPORT_SERVICE_LOG} Norwegian signs: no sign pictures in /norway_signs (scripts/norway/fetch_sign_art.py collects them); the signs worked out from the roads are used.`);
       } else {
         const plan = planNorwaySigns(exportTerrainData.osmFeatures, {
           toWorld: (lat, lng) => geoToWorldPoint(lat, lng, exportTerrainData, squareSize, 0),
@@ -13212,7 +13212,7 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
         if (assets?.objects.length) {
           norwaySigns = { ...assets, plan };
           const missing = [...plan.missing].sort((a, b) => b[1] - a[1]);
-          console.log(`${BEAMNG_EXPORT_SERVICE_LOG} Norwegian signs: ${plan.plates.length} plates on ${plan.posts.length} posts, ${plan.faces.size} different faces; ${missing.reduce((n, m) => n + m[1], 0)} of ${plan.total} left out for want of a picture${missing.length ? ` (${missing.slice(0, 12).map(([c, n]) => `${c} x${n}`).join(', ')})` : ''}.`);
+          console.log(`${BEAMNG_EXPORT_SERVICE_LOG} Norwegian signs: ${plan.plates.length} plates on ${plan.posts.length} posts, ${plan.faces.size} different faces; ${missing.reduce((n, m) => n + m[1], 0)} of ${plan.total} left out for want of a picture${missing.length ? ` (${missing.slice(0, 12).map(([c, n]) => `${c} x${n}`).join(', ')})` : ''}${assets.left.length ? `; ${assets.left.length} face(s) could not be made into a texture` : ''}.`);
         }
       }
     } catch (error) {
