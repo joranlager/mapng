@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checks the app's Norwegian data paths against Kartverket's live servers,
-// with the same code the app runs: address search, elevation (DTM1) and
-// buildings (Matrikkel), for a 1 km square in central Trondheim.
+// with the same code the app runs: address search, elevation (DTM1),
+// buildings (Matrikkel) and roads (NVDB), for a 1 km square in central Trondheim.
 //
 //   node scripts/norway/check.mjs [lat lng] [sizeMetres]
 //
@@ -11,6 +11,7 @@ import { buildAddressSearchParams, parseAddressResponse } from '../../services/k
 import { fetchKartverketDtmRaw } from '../../services/norway/kartverketDtm.js';
 import { norwayBuildingsForArea } from '../../services/norway/matrikkelFiles.js';
 import { mergeNorwayBuildings } from '../../services/norway/matrikkelBuildings.js';
+import { fetchNvdbRoadData, mergeNvdbRoads, propertyOf } from '../../services/norway/nvdbRoads.js';
 
 const lat = Number(process.argv[2]) || 63.4305;
 const lng = Number(process.argv[3]) || 10.3951;
@@ -87,6 +88,28 @@ await section('3. Buildings (Kartverket Matrikkel)', async () => {
   console.log(`with a street address: ${withAddress.length}`);
   for (const el of withAddress.slice(0, 5)) console.log(`  ${el.tags['addr:street']} ${el.tags['addr:housenumber']}, ${el.tags['addr:postcode']} ${el.tags['addr:city']}: ${el.tags.building} (type ${el.tags['kartverket:bygningstype']})`);
   return area.buildings.length > 0;
+});
+
+await section('4. Roads (NVDB, Statens vegvesen)', async () => {
+  const nvdb = await fetchNvdbRoadData(bounds, { fetchImpl: countingFetch });
+  console.log(`NVDB objects: ${Object.entries(nvdb).map(([k, v]) => `${k} ${v.length}`).join(', ')}`);
+  const tally = (list, name) => { const m = new Map(); for (const o of list) { const v = String(propertyOf(o, name)); m.set(v, (m.get(v) || 0) + 1); } return [...m].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([v, n]) => `${v} x${n}`).join(', '); };
+  console.log(`speed limits: ${tally(nvdb.speedLimit, 'Fartsgrense')}`);
+  // the area's OSM roads and road nodes, to see what NVDB adds to them
+  const query = `[out:json][timeout:60];(way[highway](${bounds.south},${bounds.west},${bounds.north},${bounds.east});node[highway~"^(give_way|stop|traffic_signals|street_lamp)$"](${bounds.south},${bounds.west},${bounds.north},${bounds.east});node[traffic_calming](${bounds.south},${bounds.west},${bounds.north},${bounds.east}););out geom;`;
+  const res = await countingFetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: new URLSearchParams({ data: query }) });
+  if (!res.ok) { console.log(`OpenStreetMap (Overpass) answered ${res.status}; NVDB was read, the match with OSM roads was not checked`); return nvdb.speedLimit.length > 0; }
+  const osm = await res.json();
+  const ways = osm.elements.filter((e) => e.type === 'way');
+  const before = { maxspeed: ways.filter((w) => w.tags?.maxspeed).length, width: ways.filter((w) => w.tags?.width).length, lanes: ways.filter((w) => w.tags?.lanes).length };
+  console.log(`OSM: ${ways.length} highway ways (with maxspeed ${before.maxspeed}, width ${before.width}, lanes ${before.lanes}), ${osm.elements.length - ways.length} sign, signal, lamp and bump nodes`);
+  const { data, stats } = mergeNvdbRoads(osm, nvdb, bounds);
+  console.log(`after NVDB: ${JSON.stringify(stats)}`);
+  const changed = data.elements.filter((e) => e.tags?.['mapng:nvdb']);
+  const differs = changed.filter((e) => { const old = osm.elements.find((o) => o.type === 'way' && o.id === e.id); return old?.tags?.maxspeed && old.tags.maxspeed !== e.tags.maxspeed; });
+  console.log(`roads where NVDB's speed limit differs from OSM's: ${differs.length}`);
+  for (const e of changed.slice(0, 8)) console.log(`  ${e.tags.name || '(no name)'} [${e.tags.highway}]: maxspeed ${e.tags.maxspeed ?? '-'}, width ${e.tags.width ?? '-'}, lanes ${e.tags.lanes ?? '-'}`);
+  return stats.roads > 0;
 });
 
 console.log('\n=== Summary ===');

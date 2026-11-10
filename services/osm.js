@@ -12,6 +12,7 @@ import {
 import { getLoadedOsmFile, osmFileCoverage } from "./osmFile.js";
 import { norwayBuildingsEnabled, touchesNorway, mergeNorwayBuildings, NORWAY_BUILDINGS_ATTRIBUTION } from "./norway/matrikkelBuildings.js";
 import { norwayBuildingsForArea } from "./norway/matrikkelFiles.js";
+import { norwayRoadsEnabled, fetchNvdbRoadData, mergeNvdbRoads, NVDB_ATTRIBUTION } from "./norway/nvdbRoads.js";
 
 const OVERTURE_ENDPOINT = "overture-maps";
 // (the user's own OSM file: osmFile.js)
@@ -1180,6 +1181,24 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
       }
     }
 
+    // Norwegian road data (NVDB, Statens vegvesen): speed limits, widths and lanes onto the OSM roads, and the
+    // signs, signals, speed bumps, street lights and guard rails OSM lacks.
+    let norwayRoads = null;
+    if (endpoint !== OVERTURE_ENDPOINT && !halves && norwayRoadsEnabled() && touchesNorway(bounds)) {
+      onStatus?.("Adding road data from NVDB (Statens vegvesen)...");
+      try {
+        const merged = mergeNvdbRoads(data, await fetchNvdbRoadData(bounds, { signal }), bounds);
+        data = merged.data;
+        norwayRoads = merged.stats;
+        const s = merged.stats;
+        console.log(`[OSM] NVDB: ${s.roads} roads (speed limit on ${s.maxspeed}, width on ${s.width}, lanes on ${s.lanes}); added ${s.giveWay} give-way and ${s.stop} stop signs, ${s.signals} signals, ${s.bumps} speed bumps, ${s.lights} street lights, ${s.guardRails} guard rails.`);
+        onStatus?.(`NVDB: speed limits on ${s.maxspeed} roads, widths on ${s.width}, ${s.giveWay + s.stop} signs.`);
+      } catch (error) {
+        if (error?.name === "AbortError" || signal?.aborted) throw error;
+        console.warn("[OSM] NVDB road data unavailable; keeping OSM road data only:", error?.message || error);
+      }
+    }
+
     lastOSMRequestInfo = {
       ...queryParams,
       endpointUsed: endpoint,
@@ -1188,7 +1207,9 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
         ? { overtureRelease: OVERTURE_RELEASE, attribution: OVERTURE_ATTRIBUTION }
         : {}),
       ...(overtureBuildings ? { overtureBuildings, attribution: OVERTURE_ATTRIBUTION } : {}),
-      ...(norwayBuildings ? { norwayBuildings, attribution: [overtureBuildings ? OVERTURE_ATTRIBUTION : null, NORWAY_BUILDINGS_ATTRIBUTION].filter(Boolean).join('; ') } : {}),
+      ...(norwayBuildings ? { norwayBuildings } : {}),
+      ...(norwayRoads ? { norwayRoads } : {}),
+      ...(norwayBuildings || norwayRoads ? { attribution: [overtureBuildings ? OVERTURE_ATTRIBUTION : null, norwayBuildings ? NORWAY_BUILDINGS_ATTRIBUTION : null, norwayRoads ? NVDB_ATTRIBUTION : null].filter(Boolean).join('; ') } : {}),
       ...(String(endpoint).includes(OSM_FILE_ENDPOINT) ? { osmFile: { name: getLoadedOsmFile()?.name, coverage: result.coverage, share: result.share, loadedAt: getLoadedOsmFile()?.loadedAt } } : {}),
       startedAt,
       completedAt: new Date().toISOString(),
