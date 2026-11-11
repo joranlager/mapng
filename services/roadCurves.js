@@ -52,7 +52,8 @@ const ARC_STEP_RAD = (5 * Math.PI) / 180;
 const ARC_STEP_M = 1;
 const NODE_POINT_TYPES = new Set(['street_furniture', 'traffic_calming', 'road_sign']);
 
-const isRoundableRoad = (f) => f?.type === 'road'
+// (a surveyed line, Norway's NVDB roads, has its real curves: it is not rounded)
+const isRoundableRoad = (f) => f?.type === 'road' && f.tags?.['mapng:source'] !== 'nvdb'
     && Array.isArray(f.geometry) && f.geometry.length >= 2
     && f.tags?.highway && !NON_DRIVEABLE_HIGHWAYS.has(f.tags.highway)
     && f.tags.area !== 'yes';

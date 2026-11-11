@@ -2475,7 +2475,8 @@ export const fetchTerrainData = async (
     if (fineRaster) {
       onProgress?.("Aligning roads with the terrain...");
       await letProgressPaint();
-      osmFeatures = snapRoadsToTerrain(heightMap, width, height, finalBounds, osmFeatures, effectiveMetersPerPixel, isGroundLevelRoad).features;
+      // (a surveyed line, Norway's NVDB roads, is where the road is: only roads from OSM are slid onto the road cut)
+      osmFeatures = snapRoadsToTerrain(heightMap, width, height, finalBounds, osmFeatures, effectiveMetersPerPixel, (f) => isGroundLevelRoad(f) && f.tags?.["mapng:source"] !== "nvdb").features;
     }
     const roadCount = osmFeatures.filter((f) => f?.type === 'road').length;
     onProgress?.(`Smoothing ${roadCount} roads into the terrain (level across, smooth along, joined at junctions)...`);

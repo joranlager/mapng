@@ -80,13 +80,13 @@ export const propertyOf = (object, name) => (object?.egenskaper || []).find((e) 
  * Every object of one type in the box (all pages), each with its properties and geometry.
  * A map with more than MAX_PAGES pages of one type gets the first MAX_PAGES (and a warning).
  */
-export async function fetchNvdbObjects(typeId, bounds, { fetchImpl = globalThis.fetch, signal, pageSize = PAGE_SIZE, maxPages = MAX_PAGES } = {}) {
+export async function fetchNvdbObjects(typeId, bounds, { fetchImpl = globalThis.fetch, signal, pageSize = PAGE_SIZE, maxPages = MAX_PAGES, include = 'egenskaper,geometri' } = {}) {
   const objects = [];
   let start = null;
   for (let page = 0; page < maxPages; page++) {
     const params = new URLSearchParams({
       kartutsnitt: `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`,
-      srid: '4326', inkluder: 'egenskaper,geometri', antall: String(pageSize),
+      srid: '4326', inkluder: include, antall: String(pageSize),
     });
     if (start) params.set('start', start);
     const res = await fetchImpl(`${NVDB_BASE}/vegobjekter/api/v4/vegobjekter/${typeId}?${params}`, {

@@ -14,7 +14,7 @@ import { norwayBuildingsEnabled, touchesNorway, mergeNorwayBuildings, NORWAY_BUI
 import { norwayBuildingsForArea } from "./norway/matrikkelFiles.js";
 import { norwayRoadsEnabled, fetchNvdbRoadData, mergeNvdbRoads, NVDB_ATTRIBUTION } from "./norway/nvdbRoads.js";
 import { norwayRoadHeightsEnabled, fetchNvdbNetwork, mergeNvdbProfiles } from "./norway/nvdbNetwork.js";
-import { norwayRoadGeometryEnabled, mergeNvdbGeometry } from "./norway/nvdbGeometry.js";
+import { norwayRoadGeometryEnabled, fetchNvdbStructures, replaceRoadsWithNvdb } from "./norway/nvdbGeometry.js";
 
 const OVERTURE_ENDPOINT = "overture-maps";
 // (the user's own OSM file: osmFile.js)
@@ -1182,7 +1182,8 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
     // Norwegian buildings (Kartverket Matrikkel) where the area is in Norway; OSM's own buildings are kept, and
     // any Matrikkel building already under an OSM footprint is left out.
     let norwayBuildings = null;
-    if (endpoint !== OVERTURE_ENDPOINT && !halves && norwayBuildingsEnabled() && touchesNorway(bounds)) {
+    // (also when the map data came from Overture, the fallback when the OpenStreetMap servers are busy)
+    if (!halves && norwayBuildingsEnabled() && touchesNorway(bounds)) {
       onStatus?.("Adding buildings from the Kartverket Matrikkel...");
       try {
         const area = await norwayBuildingsForArea(bounds, { signal, onStatus });
@@ -1198,7 +1199,7 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
     }
 
     // NVDB's road network (Statens vegvesen), read once: the roads' surveyed lines and heights.
-    const inNorway = endpoint !== OVERTURE_ENDPOINT && !halves && touchesNorway(bounds);
+    const inNorway = !halves && touchesNorway(bounds);
     let nvdbNetwork = null;
     if (inNorway && (norwayRoadGeometryEnabled() || norwayRoadHeightsEnabled())) {
       onStatus?.("Reading the road network from NVDB (Statens vegvesen)...");
@@ -1210,25 +1211,30 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
       }
     }
 
-    // The roads moved onto NVDB's surveyed centrelines (OSM's tags and junctions kept), and NVDB roads OSM lacks.
+    // The road network from NVDB only: its roads, paths, junctions, bridges and tunnels in place of OSM's.
     let norwayRoadGeometry = null;
     if (nvdbNetwork && norwayRoadGeometryEnabled()) {
       try {
-        const merged = mergeNvdbGeometry(data, nvdbNetwork, bounds);
+        const merged = replaceRoadsWithNvdb(data, nvdbNetwork, await fetchNvdbStructures(bounds, { signal }), bounds);
         data = merged.data;
         norwayRoadGeometry = merged.stats;
         const g = merged.stats;
-        console.log(`[OSM] NVDB road geometry: ${g.snapped} of ${g.ways} roads moved onto NVDB's lines (${g.moved} points, mean ${g.meanMove} m, most ${g.maxMove} m; ${g.inserted} NVDB points put in), ${g.added} roads added from NVDB.`);
-        onStatus?.(`NVDB: ${g.snapped} roads on NVDB's surveyed lines, ${g.added} added.`);
+        if (g.roads) {
+          console.log(`[OSM] NVDB road network: ${g.roads} roads and ${g.paths} paths from NVDB (${g.bridges} on bridges, ${g.tunnels} in tunnels; ${g.welded + g.spliced} ends joined), in place of ${g.osmWays} OSM ways and ${g.osmNodes} OSM junction nodes.`);
+          onStatus?.(`NVDB: ${g.roads} roads, ${g.paths} paths, ${g.bridges} bridge and ${g.tunnels} tunnel stretches (OSM's roads left out).`);
+        } else {
+          console.warn("[OSM] NVDB has no roads here; OSM's roads are used.");
+        }
       } catch (error) {
-        console.warn("[OSM] NVDB road geometry could not be used; roads stay where OSM has them:", error?.message || error);
+        if (error?.name === "AbortError" || signal?.aborted) throw error;
+        console.warn("[OSM] NVDB's road network could not be used; OSM's roads are used:", error?.message || error);
       }
     }
 
     // Norwegian road data (NVDB, Statens vegvesen): speed limits, widths and lanes onto the OSM roads, and the
     // signs, signals, speed bumps, street lights and guard rails OSM lacks.
     let norwayRoads = null;
-    if (endpoint !== OVERTURE_ENDPOINT && !halves && norwayRoadsEnabled() && touchesNorway(bounds)) {
+    if (inNorway && norwayRoadsEnabled()) {
       onStatus?.("Adding road data from NVDB (Statens vegvesen)...");
       try {
         const merged = mergeNvdbRoads(data, await fetchNvdbRoadData(bounds, { signal }), bounds);
