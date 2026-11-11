@@ -71,7 +71,7 @@ Nothing here has been run in BeamNG.
 - One NVDB value per OSM road: a speed limit that changes along an OSM way is not split.
 - A map crossing into Sweden, Finland or Russia gets Kartverket heights on the Norwegian side only.
 - Matrikkel has points only: added buildings are boxes sized by building type.
-- `public/norway_signs` is not in the repository; the pictures come from Skiltforskriften (small GIFs, imported from
+- `public/norway_signs` and `norske_skilt_komplett` are in the repository; the pictures come from Skiltforskriften (small GIFs, imported from
   `norske_skilt_komplett` in the project: 305 pictures). A script may not fetch them: Lovdata's robots.txt disallows everything for scripts,
   vegvesen.no's disallows `/globalassets/` where its pictures are, and the NVDB catalogue has sign numbers and names
   but no pictures.

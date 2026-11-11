@@ -1,0 +1,2142 @@
+{
+ "sources": [
+  "Skiltforskriften (Lovdata)"
+ ],
+ "signs": {
+  "100.1": {
+   "file": "100.1.png",
+   "w": 86,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-100-1-01.gif"
+  },
+  "100.2": {
+   "file": "100.2.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-100-2-01.gif"
+  },
+  "102.1": {
+   "file": "102.1.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-102-1-01.gif"
+  },
+  "102.2": {
+   "file": "102.2.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-102-2-01.gif"
+  },
+  "104.1": {
+   "file": "104.1.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-104-1-01.gif"
+  },
+  "104.2": {
+   "file": "104.2.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-104-2-01.gif"
+  },
+  "106.1": {
+   "file": "106.1.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-106-1-01.gif"
+  },
+  "106.2": {
+   "file": "106.2.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-106-2-01.gif"
+  },
+  "106.3": {
+   "file": "106.3.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-106-3-01.gif"
+  },
+  "108": {
+   "file": "108.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-108-01.gif"
+  },
+  "109": {
+   "file": "109.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-109-01.gif"
+  },
+  "110": {
+   "file": "110.png",
+   "w": 87,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-110-01.gif"
+  },
+  "112": {
+   "file": "112.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-112-01.gif"
+  },
+  "114": {
+   "file": "114.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-114-01.gif"
+  },
+  "116": {
+   "file": "116.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-116-01.gif"
+  },
+  "117": {
+   "file": "117.png",
+   "w": 87,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-117-01.gif"
+  },
+  "118": {
+   "file": "118.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-118-01.gif"
+  },
+  "120": {
+   "file": "120.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-120-01.gif"
+  },
+  "122": {
+   "file": "122.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-122-01.gif"
+  },
+  "124": {
+   "file": "124.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-124-01.gif"
+  },
+  "126": {
+   "file": "126.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-126-01.gif"
+  },
+  "132": {
+   "file": "132.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-132-01.gif"
+  },
+  "134": {
+   "file": "134.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-134-01.gif"
+  },
+  "135": {
+   "file": "135.png",
+   "w": 87,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-135-01.gif"
+  },
+  "136.1": {
+   "file": "136.1.png",
+   "w": 30,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-136-1-01.gif"
+  },
+  "136.2": {
+   "file": "136.2.png",
+   "w": 30,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-136-2-01.gif"
+  },
+  "136.3": {
+   "file": "136.3.png",
+   "w": 30,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-136-3-01.gif"
+  },
+  "138.1": {
+   "file": "138.1.png",
+   "w": 117,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-138-1-01.gif"
+  },
+  "138.2": {
+   "file": "138.2.png",
+   "w": 117,
+   "h": 101,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-138-2-01.gif"
+  },
+  "139": {
+   "file": "139.png",
+   "w": 87,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-139-01.gif"
+  },
+  "140": {
+   "file": "140.png",
+   "w": 87,
+   "h": 96,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-140-01.gif"
+  },
+  "142": {
+   "file": "142.png",
+   "w": 87,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-142-01.gif"
+  },
+  "144": {
+   "file": "144.png",
+   "w": 86,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-144-01.gif"
+  },
+  "146.1": {
+   "file": "146.1.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-146-1-01.gif"
+  },
+  "146.2": {
+   "file": "146.2.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-146-2-01.gif"
+  },
+  "146.3": {
+   "file": "146.3.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-146-3-01.gif"
+  },
+  "146.4": {
+   "file": "146.4.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-146-4-01.gif"
+  },
+  "146.5": {
+   "file": "146.5.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-146-5-01.gif"
+  },
+  "148": {
+   "file": "148.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-148-01.gif"
+  },
+  "149": {
+   "file": "149.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-149-01.gif"
+  },
+  "150": {
+   "file": "150.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-150-01.gif"
+  },
+  "151": {
+   "file": "151.png",
+   "w": 76,
+   "h": 67,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "Fareskilt som viser militær aktivitet. Grafikk"
+  },
+  "152": {
+   "file": "152.png",
+   "w": 86,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-152-01.gif"
+  },
+  "153": {
+   "file": "153.png",
+   "w": 75,
+   "h": 67,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-153-01.gif"
+  },
+  "154": {
+   "file": "154.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-154-01.gif"
+  },
+  "155": {
+   "file": "155.png",
+   "w": 87,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-155-01.gif"
+  },
+  "156": {
+   "file": "156.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-156-01.gif"
+  },
+  "200": {
+   "file": "200.png",
+   "w": 72,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-530a-01.gif"
+  },
+  "202": {
+   "file": "202.png",
+   "w": 86,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-202-01.gif"
+  },
+  "204": {
+   "file": "204.png",
+   "w": 94,
+   "h": 94,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-204-01.gif"
+  },
+  "206": {
+   "file": "206.png",
+   "w": 87,
+   "h": 87,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-206-01.gif"
+  },
+  "208": {
+   "file": "208.png",
+   "w": 87,
+   "h": 87,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-208-01.gif"
+  },
+  "210": {
+   "file": "210.png",
+   "w": 87,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-210-01.gif"
+  },
+  "212": {
+   "file": "212.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-212-01.gif"
+  },
+  "214": {
+   "file": "214.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-214-01.gif"
+  },
+  "302": {
+   "file": "302.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-302-01.gif"
+  },
+  "306.0": {
+   "file": "306.0.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-0-01.gif"
+  },
+  "306.1": {
+   "file": "306.1.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-1-01.gif"
+  },
+  "306.10": {
+   "file": "306.10.png",
+   "w": 156,
+   "h": 156,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "forbudsskilt elsparkesykkel inni rød sirkel med diagonal rød strek over"
+  },
+  "306.3": {
+   "file": "306.3.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-3-01.gif"
+  },
+  "306.4": {
+   "file": "306.4.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-4-01.gif"
+  },
+  "306.5": {
+   "file": "306.5.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-5-01.gif"
+  },
+  "306.6": {
+   "file": "306.6.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-6-01.gif"
+  },
+  "306.7": {
+   "file": "306.7.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-7-01.gif"
+  },
+  "306.8": {
+   "file": "306.8.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-8-01.gif"
+  },
+  "306.9": {
+   "file": "306.9.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-306-9-01.gif"
+  },
+  "308": {
+   "file": "308.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-308-01.gif"
+  },
+  "310": {
+   "file": "310.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-310-01.gif"
+  },
+  "312": {
+   "file": "312.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-312-01.gif"
+  },
+  "314": {
+   "file": "314.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-314-01.gif"
+  },
+  "316": {
+   "file": "316.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-316-01.gif"
+  },
+  "318.1": {
+   "file": "318.1.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-318-1-01.gif"
+  },
+  "318.2": {
+   "file": "318.2.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-318-2-01.gif"
+  },
+  "320": {
+   "file": "320.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-320-01.gif"
+  },
+  "322": {
+   "file": "322.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-322-01.gif"
+  },
+  "324": {
+   "file": "324.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-324-01.gif"
+  },
+  "326": {
+   "file": "326.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-326-01.gif"
+  },
+  "330.1": {
+   "file": "330.1.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-330-1-01.gif"
+  },
+  "330.2": {
+   "file": "330.2.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-330-2-01.gif"
+  },
+  "332": {
+   "file": "332.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-332-01.gif"
+  },
+  "334": {
+   "file": "334.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-334-01.gif"
+  },
+  "335": {
+   "file": "335.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-335-01.gif"
+  },
+  "336": {
+   "file": "336.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-336-01.gif"
+  },
+  "337": {
+   "file": "337.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-337-01.gif"
+  },
+  "362": {
+   "file": "362.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-362-01.gif"
+  },
+  "364": {
+   "file": "364.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-364-01.gif"
+  },
+  "366": {
+   "file": "366.png",
+   "w": 85,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-366-01.gif"
+  },
+  "367": {
+   "file": "367.png",
+   "w": 119,
+   "h": 172,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "soneskilt med tallet 6 inni rød ring med en elsparkesykkel under"
+  },
+  "368": {
+   "file": "368.png",
+   "w": 85,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-368-01.gif"
+  },
+  "369": {
+   "file": "369.png",
+   "w": 112,
+   "h": 162,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "grått soneskilt med tallet 6 inni en ring med en elsparkesykkel under og tre sorte streker som går diagonalt over skiltet"
+  },
+  "370": {
+   "file": "370.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-370-01.gif"
+  },
+  "372": {
+   "file": "372.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-372-01.gif"
+  },
+  "376.1": {
+   "file": "376.1.png",
+   "w": 85,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-376-1-01.gif"
+  },
+  "376.2": {
+   "file": "376.2.png",
+   "w": 85,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-376-2-01.gif"
+  },
+  "377": {
+   "file": "377.png",
+   "w": 165,
+   "h": 238,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "soneskilt parkering forbudt med en elsparkesykkel under"
+  },
+  "378.1": {
+   "file": "378.1.png",
+   "w": 82,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-378-1-01.gif"
+  },
+  "378.2": {
+   "file": "378.2.png",
+   "w": 81,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-378-2-01.gif"
+  },
+  "379": {
+   "file": "379.png",
+   "w": 246,
+   "h": 356,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "grått soneskilt der et parkering forbudtskilt står over en elsparkesykkel og tre sorte streker går diagonalt over skiltet"
+  },
+  "380": {
+   "file": "380.png",
+   "w": 166,
+   "h": 221,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "soneskilt med en elsparkesykkel inni en rød sirkel med en rød strek diagonalt over sykkelen"
+  },
+  "382": {
+   "file": "382.png",
+   "w": 171,
+   "h": 229,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "soneskilt med en elsparkesykkel inni en sirkel med strek diagonalt over og tre sorte streker går diagonalt over hele skiltet"
+  },
+  "402.1": {
+   "file": "402.1.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-402-1-01.gif"
+  },
+  "402.2": {
+   "file": "402.2.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-402-2-01.gif"
+  },
+  "402.3": {
+   "file": "402.3.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-402-3-01.gif"
+  },
+  "402.4": {
+   "file": "402.4.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-402-4-01.gif"
+  },
+  "402.5": {
+   "file": "402.5.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-402-5-01.gif"
+  },
+  "402.6": {
+   "file": "402.6.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-402-6-01.gif"
+  },
+  "402.7": {
+   "file": "402.7.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-402-7-01.gif"
+  },
+  "402.8": {
+   "file": "402.8.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-402-8-01.gif"
+  },
+  "404.1": {
+   "file": "404.1.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-404-1-01.gif"
+  },
+  "404.2": {
+   "file": "404.2.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-404-2-01.gif"
+  },
+  "406": {
+   "file": "406.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-406-01.gif"
+  },
+  "408": {
+   "file": "408.png",
+   "w": 243,
+   "h": 37,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-408-01.gif"
+  },
+  "502": {
+   "file": "502.png",
+   "w": 82,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-502-01.gif"
+  },
+  "503": {
+   "file": "503.png",
+   "w": 82,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-503-01.gif"
+  },
+  "504": {
+   "file": "504.png",
+   "w": 82,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-504-01.gif"
+  },
+  "505": {
+   "file": "505.png",
+   "w": 82,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-505-01.gif"
+  },
+  "506": {
+   "file": "506.png",
+   "w": 78,
+   "h": 78,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-506-01.gif"
+  },
+  "507": {
+   "file": "507.png",
+   "w": 77,
+   "h": 78,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-507-01.gif"
+  },
+  "508.1": {
+   "file": "508.1.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-508-1-01.gif"
+  },
+  "508.2": {
+   "file": "508.2.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-508-2-01.gif"
+  },
+  "509": {
+   "file": "509.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-509-01.gif"
+  },
+  "510.1": {
+   "file": "510.1.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-510-1-01.gif"
+  },
+  "510.2": {
+   "file": "510.2.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-510-2-01.gif"
+  },
+  "511": {
+   "file": "511.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-511-01.gif"
+  },
+  "512": {
+   "file": "512.png",
+   "w": 76,
+   "h": 49,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-512-01.gif"
+  },
+  "513": {
+   "file": "513.png",
+   "w": 75,
+   "h": 49,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-513-01.gif"
+  },
+  "514": {
+   "file": "514.png",
+   "w": 75,
+   "h": 49,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-514-01.gif"
+  },
+  "516": {
+   "file": "516.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-516-01.gif"
+  },
+  "518": {
+   "file": "518.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-518-01.gif"
+  },
+  "520": {
+   "file": "520.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-520-01.gif"
+  },
+  "521.1": {
+   "file": "521.1.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-521-01.gif"
+  },
+  "521.2": {
+   "file": "521.2.png",
+   "w": 75,
+   "h": 70,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-521-2-01.gif"
+  },
+  "522": {
+   "file": "522.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-522-01.gif"
+  },
+  "524": {
+   "file": "524.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-524-01.gif"
+  },
+  "526.1": {
+   "file": "526.1.png",
+   "w": 48,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-526-1-01.gif"
+  },
+  "526.2": {
+   "file": "526.2.png",
+   "w": 76,
+   "h": 48,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-526-2-01.gif"
+  },
+  "527.1": {
+   "file": "527.1.png",
+   "w": 63,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-527-1-01.gif"
+  },
+  "527.2": {
+   "file": "527.2.png",
+   "w": 63,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-527-2-01.gif"
+  },
+  "527.3": {
+   "file": "527.3.png",
+   "w": 63,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-527-1-01.gif"
+  },
+  "527.4": {
+   "file": "527.4.png",
+   "w": 63,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-527-2-01.gif"
+  },
+  "528": {
+   "file": "528.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-528-01.gif"
+  },
+  "531.1": {
+   "file": "531.1.png",
+   "w": 85,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-531-1-01.gif"
+  },
+  "531.2": {
+   "file": "531.2.png",
+   "w": 90,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-531-2-01.gif"
+  },
+  "536.1": {
+   "file": "536.1.png",
+   "w": 85,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-536-1-01.gif"
+  },
+  "536.2": {
+   "file": "536.2.png",
+   "w": 90,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-536-2-01.gif"
+  },
+  "538": {
+   "file": "538.png",
+   "w": 103,
+   "h": 114,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-538-01.gif"
+  },
+  "539": {
+   "file": "539.png",
+   "w": 113,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-539-01.gif"
+  },
+  "540": {
+   "file": "540.png",
+   "w": 85,
+   "h": 114,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-540-01.gif"
+  },
+  "542": {
+   "file": "542.png",
+   "w": 85,
+   "h": 114,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-542-01.gif"
+  },
+  "548": {
+   "file": "548.png",
+   "w": 85,
+   "h": 114,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-548-01.gif"
+  },
+  "550": {
+   "file": "550.png",
+   "w": 85,
+   "h": 114,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-550-01.gif"
+  },
+  "552": {
+   "file": "552.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-552-01.gif"
+  },
+  "555": {
+   "file": "555.png",
+   "w": 121,
+   "h": 161,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-555-01.gif"
+  },
+  "556.1": {
+   "file": "556.1.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-556-1-01.gif"
+  },
+  "556.2": {
+   "file": "556.2.png",
+   "w": 77,
+   "h": 77,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-556-2-01.gif"
+  },
+  "558": {
+   "file": "558.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-558-01.gif"
+  },
+  "560": {
+   "file": "560.png",
+   "w": 113,
+   "h": 110,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-560-01.gif"
+  },
+  "565": {
+   "file": "565.png",
+   "w": 75,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-565-01.gif"
+  },
+  "570.1H": {
+   "file": "570.1H.png",
+   "w": 77,
+   "h": 77,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-570-1H-01.gif"
+  },
+  "570.1V": {
+   "file": "570.1V.png",
+   "w": 77,
+   "h": 77,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-570-1V-01.gif"
+  },
+  "570.2H": {
+   "file": "570.2H.png",
+   "w": 235,
+   "h": 67,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-570-2H-01.gif"
+  },
+  "570.2V": {
+   "file": "570.2V.png",
+   "w": 235,
+   "h": 67,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-570-2V-01.gif"
+  },
+  "601": {
+   "file": "601.png",
+   "w": 72,
+   "h": 96,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-601-02.png"
+  },
+  "602": {
+   "file": "602.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-602-01.gif"
+  },
+  "605": {
+   "file": "605.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-605-01.gif"
+  },
+  "606": {
+   "file": "606.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-606-01.gif"
+  },
+  "608": {
+   "file": "608.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-608-01.gif"
+  },
+  "609": {
+   "file": "609.png",
+   "w": 80,
+   "h": 81,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-609-01.gif"
+  },
+  "610.1": {
+   "file": "610.1.png",
+   "w": 81,
+   "h": 81,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-610-1-01.gif"
+  },
+  "610.2": {
+   "file": "610.2.png",
+   "w": 80,
+   "h": 80,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-610-2-01.gif"
+  },
+  "611": {
+   "file": "611.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-611-01.gif"
+  },
+  "612": {
+   "file": "612.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-612-01.gif"
+  },
+  "613.1": {
+   "file": "613.1.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-613-1-01.gif"
+  },
+  "613.2": {
+   "file": "613.2.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-613-2-01.gif"
+  },
+  "614": {
+   "file": "614.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-614-01.gif"
+  },
+  "616": {
+   "file": "616.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-616-01.gif"
+  },
+  "618": {
+   "file": "618.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-618-01.gif"
+  },
+  "621": {
+   "file": "621.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-621-01.gif"
+  },
+  "622": {
+   "file": "622.png",
+   "w": 75,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-622-01.gif"
+  },
+  "624": {
+   "file": "624.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-624-01.gif"
+  },
+  "625": {
+   "file": "625.png",
+   "w": 75,
+   "h": 70,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-625-01.gif"
+  },
+  "626": {
+   "file": "626.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-626-01.gif"
+  },
+  "635": {
+   "file": "635.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-635-01.gif"
+  },
+  "637": {
+   "file": "637.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-637-01.gif"
+  },
+  "638": {
+   "file": "638.png",
+   "w": 276,
+   "h": 106,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "Rektangulært skilt med parkingsskilt for tungtransport. Illustrasjon."
+  },
+  "640.10": {
+   "file": "640.10.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-640-10-01.gif"
+  },
+  "640.101": {
+   "file": "640.101.png",
+   "w": 72,
+   "h": 71,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-640-101-01.png"
+  },
+  "640.102": {
+   "file": "640.102.png",
+   "w": 79,
+   "h": 74,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-640-102-01.png"
+  },
+  "640.12": {
+   "file": "640.12.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-640-12-01.gif"
+  },
+  "640.20": {
+   "file": "640.20.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-640-20-01.gif"
+  },
+  "640.30": {
+   "file": "640.30.png",
+   "w": 80,
+   "h": 79,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-640-30-02.png"
+  },
+  "650.10": {
+   "file": "650.10.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-650-10-01.gif"
+  },
+  "650.11": {
+   "file": "650.11.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-650-11-01.gif"
+  },
+  "650.20": {
+   "file": "650.20.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-650-20-01.gif"
+  },
+  "650.21": {
+   "file": "650.21.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-650-21-01.gif"
+  },
+  "650.22": {
+   "file": "650.22.png",
+   "w": 74,
+   "h": 69,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "Serviceskilt som viser sykkelløype. Grafikk"
+  },
+  "650.40": {
+   "file": "650.40.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-650-40-01.gif"
+  },
+  "650.41": {
+   "file": "650.41.png",
+   "w": 78,
+   "h": 72,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-650-41-01.png"
+  },
+  "701": {
+   "file": "701.png",
+   "w": 143,
+   "h": 83,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-701-01.gif"
+  },
+  "703": {
+   "file": "703.png",
+   "w": 160,
+   "h": 83,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-703-01.gif"
+  },
+  "705": {
+   "file": "705.png",
+   "w": 198,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-705-01.gif"
+  },
+  "707": {
+   "file": "707.png",
+   "w": 209,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-707-01.gif"
+  },
+  "709": {
+   "file": "709.png",
+   "w": 246,
+   "h": 89,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-709-01.gif"
+  },
+  "711": {
+   "file": "711.png",
+   "w": 72,
+   "h": 83,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-711-01.gif"
+  },
+  "713": {
+   "file": "713.png",
+   "w": 145,
+   "h": 49,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-713-01.gif"
+  },
+  "715": {
+   "file": "715.png",
+   "w": 170,
+   "h": 45,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-715-01.gif"
+  },
+  "717": {
+   "file": "717.png",
+   "w": 85,
+   "h": 57,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-717-01.gif"
+  },
+  "719": {
+   "file": "719.png",
+   "w": 246,
+   "h": 100,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-719-01.gif"
+  },
+  "723.11": {
+   "file": "723.11.png",
+   "w": 54,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-11-01.gif"
+  },
+  "723.12": {
+   "file": "723.12.png",
+   "w": 54,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-12-01.gif"
+  },
+  "723.13": {
+   "file": "723.13.png",
+   "w": 54,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-13-01.gif"
+  },
+  "723.14": {
+   "file": "723.14.png",
+   "w": 54,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-14-01.gif"
+  },
+  "723.15": {
+   "file": "723.15.png",
+   "w": 54,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-15-01.gif"
+  },
+  "723.16": {
+   "file": "723.16.png",
+   "w": 54,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-16-01.gif"
+  },
+  "723.21": {
+   "file": "723.21.png",
+   "w": 68,
+   "h": 34,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-21-01.gif"
+  },
+  "723.22": {
+   "file": "723.22.png",
+   "w": 68,
+   "h": 34,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-22-01.gif"
+  },
+  "723.31": {
+   "file": "723.31.png",
+   "w": 53,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-31-01.gif"
+  },
+  "723.41": {
+   "file": "723.41.png",
+   "w": 53,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-41-01.gif"
+  },
+  "723.51": {
+   "file": "723.51.png",
+   "w": 53,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-51-01.gif"
+  },
+  "723.61": {
+   "file": "723.61.png",
+   "w": 53,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-61-01.gif"
+  },
+  "723.62": {
+   "file": "723.62.png",
+   "w": 53,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-62-01.gif"
+  },
+  "723.63": {
+   "file": "723.63.png",
+   "w": 52,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-63-01.gif"
+  },
+  "723.64": {
+   "file": "723.64.png",
+   "w": 52,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-64-01.gif"
+  },
+  "723.65": {
+   "file": "723.65.png",
+   "w": 52,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-65-01.gif"
+  },
+  "723.66": {
+   "file": "723.66.png",
+   "w": 53,
+   "h": 53,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-66-01.gif"
+  },
+  "723.71": {
+   "file": "723.71.png",
+   "w": 89,
+   "h": 34,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-71-01.gif"
+  },
+  "723.72": {
+   "file": "723.72.png",
+   "w": 88,
+   "h": 34,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-72-01.gif"
+  },
+  "723.73": {
+   "file": "723.73.png",
+   "w": 81,
+   "h": 34,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-723-73-01.gif"
+  },
+  "725": {
+   "file": "725.png",
+   "w": 219,
+   "h": 85,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-725-01.gif"
+  },
+  "727": {
+   "file": "727.png",
+   "w": 220,
+   "h": 43,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-727-01.gif"
+  },
+  "729": {
+   "file": "729.png",
+   "w": 84,
+   "h": 26,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-729-01.gif"
+  },
+  "731": {
+   "file": "731.png",
+   "w": 67,
+   "h": 94,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-731-01.gif"
+  },
+  "741": {
+   "file": "741.png",
+   "w": 70,
+   "h": 95,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-741-01.gif"
+  },
+  "743": {
+   "file": "743.png",
+   "w": 63,
+   "h": 94,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-743-01.gif"
+  },
+  "745": {
+   "file": "745.png",
+   "w": 59,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-745-01.gif"
+  },
+  "749": {
+   "file": "749.png",
+   "w": 88,
+   "h": 27,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-749-01.gif"
+  },
+  "751": {
+   "file": "751.png",
+   "w": 106,
+   "h": 19,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-751-01.gif"
+  },
+  "753": {
+   "file": "753.png",
+   "w": 76,
+   "h": 166,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-753-01.gif"
+  },
+  "755": {
+   "file": "755.png",
+   "w": 60,
+   "h": 60,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-755-01.gif"
+  },
+  "757": {
+   "file": "757.png",
+   "w": 76,
+   "h": 98,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-757-01.gif"
+  },
+  "761": {
+   "file": "761.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-761-01.gif"
+  },
+  "763": {
+   "file": "763.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-763-01.gif"
+  },
+  "765": {
+   "file": "765.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-765-01.gif"
+  },
+  "767": {
+   "file": "767.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-767-01.gif"
+  },
+  "769": {
+   "file": "769.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-769-01.gif"
+  },
+  "771": {
+   "file": "771.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-771-01.gif"
+  },
+  "772": {
+   "file": "772.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-772-01.gif"
+  },
+  "773": {
+   "file": "773.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-773-01.gif"
+  },
+  "774": {
+   "file": "774.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-774-01.gif"
+  },
+  "775": {
+   "file": "775.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-775-01.gif"
+  },
+  "776": {
+   "file": "776.png",
+   "w": 85,
+   "h": 84,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-776-01.gif"
+  },
+  "780": {
+   "file": "780.png",
+   "w": 75,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-780-01.gif"
+  },
+  "790.10": {
+   "file": "790.10.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-790-10-01.gif"
+  },
+  "790.15": {
+   "file": "790.15.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-790-15-01.gif"
+  },
+  "790.16": {
+   "file": "790.16.png",
+   "w": 69,
+   "h": 69,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "Vegvisningsskilt som viser en handlevogn for kjøpesenter. Grafikk"
+  },
+  "790.20": {
+   "file": "790.20.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-790-20-01.gif"
+  },
+  "790.30": {
+   "file": "790.30.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-790-30-01.gif"
+  },
+  "790.31": {
+   "file": "790.31.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-790-31-01.gif"
+  },
+  "790.32": {
+   "file": "790.32.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-790-32-01.gif"
+  },
+  "790.40": {
+   "file": "790.40.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-790-40-01.gif"
+  },
+  "792.11": {
+   "file": "792.11.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-11-01.gif"
+  },
+  "792.12": {
+   "file": "792.12.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-12-01.gif"
+  },
+  "792.13": {
+   "file": "792.13.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-13-01.gif"
+  },
+  "792.14": {
+   "file": "792.14.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-14-01.gif"
+  },
+  "792.15": {
+   "file": "792.15.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-15-01.gif"
+  },
+  "792.16": {
+   "file": "792.16.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-16-01.gif"
+  },
+  "792.17": {
+   "file": "792.17.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-17-01.gif"
+  },
+  "792.30": {
+   "file": "792.30.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-30-01.gif"
+  },
+  "792.31": {
+   "file": "792.31.png",
+   "w": 56,
+   "h": 56,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-792-31-01.gif"
+  },
+  "802": {
+   "file": "802.png",
+   "w": 113,
+   "h": 26,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-802-01.gif"
+  },
+  "804": {
+   "file": "804.png",
+   "w": 113,
+   "h": 26,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-804-01.gif"
+  },
+  "806": {
+   "file": "806.png",
+   "w": 113,
+   "h": 72,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-806-01.gif"
+  },
+  "807.1": {
+   "file": "807.1.png",
+   "w": 71,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-1-01.gif"
+  },
+  "807.10": {
+   "file": "807.10.png",
+   "w": 168,
+   "h": 86,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "rektangulært skilt med en sparkesykkel i sort på hvit bakgrunn"
+  },
+  "807.2": {
+   "file": "807.2.png",
+   "w": 73,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-2-01.gif"
+  },
+  "807.3": {
+   "file": "807.3.png",
+   "w": 73,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-3-01.gif"
+  },
+  "807.4": {
+   "file": "807.4.png",
+   "w": 73,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-4-01.gif"
+  },
+  "807.5": {
+   "file": "807.5.png",
+   "w": 73,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-5-01.gif"
+  },
+  "807.6": {
+   "file": "807.6.png",
+   "w": 73,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-6-01.gif"
+  },
+  "807.7": {
+   "file": "807.7.png",
+   "w": 73,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-7-01.gif"
+  },
+  "807.8": {
+   "file": "807.8.png",
+   "w": 73,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-8-01.gif"
+  },
+  "807.9": {
+   "file": "807.9.png",
+   "w": 73,
+   "h": 38,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-807-9-01.gif"
+  },
+  "808": {
+   "file": "808.png",
+   "w": 113,
+   "h": 49,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-808-01.gif"
+  },
+  "810": {
+   "file": "810.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-810-01.gif"
+  },
+  "812": {
+   "file": "812.png",
+   "w": 68,
+   "h": 68,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-812-01.gif"
+  },
+  "813.1": {
+   "file": "813.1.png",
+   "w": 64,
+   "h": 33,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-813-1-01.gif"
+  },
+  "813.2": {
+   "file": "813.2.png",
+   "w": 64,
+   "h": 50,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-813-2-01.gif"
+  },
+  "814": {
+   "file": "814.png",
+   "w": 113,
+   "h": 35,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-814-01.gif"
+  },
+  "816": {
+   "file": "816.png",
+   "w": 113,
+   "h": 35,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-816-01.gif"
+  },
+  "817": {
+   "file": "817.png",
+   "w": 113,
+   "h": 113,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-817-01.gif"
+  },
+  "822": {
+   "file": "822.png",
+   "w": 76,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-822-01.gif"
+  },
+  "824": {
+   "file": "824.png",
+   "w": 113,
+   "h": 49,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-824-01.gif"
+  },
+  "826": {
+   "file": "826.png",
+   "w": 113,
+   "h": 78,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-826-01.gif"
+  },
+  "828.1": {
+   "file": "828.1.png",
+   "w": 30,
+   "h": 80,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-828-1-01.gif"
+  },
+  "828.2": {
+   "file": "828.2.png",
+   "w": 30,
+   "h": 80,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-828-2-01.gif"
+  },
+  "828.3": {
+   "file": "828.3.png",
+   "w": 30,
+   "h": 80,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-828-3-01.gif"
+  },
+  "829": {
+   "file": "829.png",
+   "w": 113,
+   "h": 48,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-829-01.gif"
+  },
+  "831": {
+   "file": "831.png",
+   "w": 113,
+   "h": 58,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-831-01.gif"
+  },
+  "834": {
+   "file": "834.png",
+   "w": 113,
+   "h": 74,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-834-01.gif"
+  },
+  "856": {
+   "file": "856.png",
+   "w": 499,
+   "h": 136,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "Skilt med fartsgrense 80, illustrasjon"
+  },
+  "908": {
+   "file": "908.png",
+   "w": 132,
+   "h": 28,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-908-01.gif"
+  },
+  "912": {
+   "file": "912.png",
+   "w": 72,
+   "h": 102,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-912-01.gif"
+  },
+  "916": {
+   "file": "916.png",
+   "w": 58,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-916-01.gif"
+  },
+  "940": {
+   "file": "940.png",
+   "w": 57,
+   "h": 75,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-940-01.gif"
+  },
+  "942": {
+   "file": "942.png",
+   "w": 36,
+   "h": 76,
+   "source": "Skiltforskriften (Lovdata)",
+   "name": "20051007-1219-942-01.gif"
+  }
+ }
+}
