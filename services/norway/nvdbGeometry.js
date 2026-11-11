@@ -229,7 +229,9 @@ export function nvdbRoadWays(segments, spans = new Map(), bounds) {
     pieces.sort((a, b) => a.from - b.from);
     let line = null;
     const close = () => {
-      if (line) ways.push({ type: 'way', id: id--, tags: { ...line.tags, 'mapng:source': 'nvdb' }, geometry: (line.against ? [...line.points].reverse() : line.points).map((p) => ({ lat: p.lat, lon: p.lon })) });
+      // (a way turned round to run with its traffic no longer runs in NVDB's metering direction: said, for what
+      // NVDB places by the side of that direction)
+      if (line) ways.push({ type: 'way', id: id--, tags: { ...line.tags, 'mapng:source': 'nvdb', ...(line.against ? { 'mapng:nvdb_reversed': 'yes' } : {}) }, geometry: (line.against ? [...line.points].reverse() : line.points).map((p) => ({ lat: p.lat, lon: p.lon })) });
     };
     for (const p of pieces) {
       if (line && line.sign === p.sign && Math.abs(line.to - p.from) < 1e-6 && same(line.points[line.points.length - 1], p.points[0])) {

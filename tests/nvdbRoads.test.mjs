@@ -248,3 +248,25 @@ test('a sign number keeps the letters that say which way it points', async () =>
   assert.equal(of('202 - Vikeplikt'), '202');
   assert.equal(of('526.2 - Envegskjøring'), '526.2');
 });
+
+test('a street light recorded on the carriageway stands at the roadside, on the side NVDB gives', () => {
+  // the main street runs north along lon 10.3940; lights recorded on its centre line
+  const light = (id, lat, side, lon = 10.3940) => ({ ...obj(id, [], `POINT Z (${lat} ${lon} 12)`, true), ...(side ? { lokasjon: { stedfestinger: [{ sideposisjon: side }] } } : {}) });
+  const run = (lights, road = mainStreet) => mergeNvdbRoads({ elements: [road] }, { streetLight: lights }, bounds);
+  const east = (el) => (el.lon - 10.3940) / M_LON;   // metres east of the centre line: right of a way drawn northwards
+  const lamps = (out) => out.data.elements.filter((e) => e.tags?.highway === 'street_lamp');
+  const out = run([light(1, 63.4250, 'H'), light(2, 63.4255, 'V'), light(3, 63.4260, 'M'), light(4, 63.4265, null), light(5, 63.4246, 'V', 10.3940 + 9 * M_LON)]);
+  const [right, left, middle, unsaid, beside] = lamps(out);
+  assert.ok(east(right) > 4 && east(right) < 7, `right of the road: ${east(right)}`);
+  assert.ok(east(left) < -4 && east(left) > -7, `left of the road: ${east(left)}`);
+  assert.ok(Math.abs(east(middle)) < 0.1, 'a light in the middle of the road (the median) stays');
+  assert.ok(east(unsaid) > 4, 'no side given: the right');
+  assert.ok(Math.abs(east(beside) - 9) < 0.1, 'a light recorded beside the road stays where it is');
+  assert.equal(out.stats.lights, 5);
+  assert.equal(out.stats.lightsMoved, 3);
+  // a way turned round against NVDB's metering direction: right and left swap
+  const turned = { ...mainStreet, tags: { ...mainStreet.tags, 'mapng:nvdb_reversed': 'yes' } };
+  assert.ok(east(lamps(run([light(1, 63.4250, 'H')], turned))[0]) < -4);
+  // recorded a metre off the centre line: it stands on the side it is on
+  assert.ok(east(lamps(run([light(1, 63.4250, 'H', 10.3940 - 1 * M_LON)]))[0]) < -4);
+});

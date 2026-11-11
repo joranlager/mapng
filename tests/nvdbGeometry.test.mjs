@@ -70,7 +70,7 @@ test('the network becomes ways in OSM terms', () => {
   assert.equal(street.geometry.length, 3, 'the two pieces are one way');
   assert.deepEqual(sidewalk.tags, { highway: 'footway', footway: 'sidewalk', 'mapng:source': 'nvdb' });
   assert.equal(crossing.tags.footway, 'crossing');
-  assert.deepEqual(oneway.tags, { highway: 'secondary', ref: 'Fv 706', oneway: 'yes', lanes: '2', 'mapng:source': 'nvdb' });
+  assert.deepEqual(oneway.tags, { highway: 'secondary', ref: 'Fv 706', oneway: 'yes', lanes: '2', 'mapng:source': 'nvdb', 'mapng:nvdb_reversed': 'yes' });
   assert.ok(near(oneway.geometry[0], 100, 60, 0.5), 'lanes against the metering direction: drawn the way the traffic runs');
   assert.equal(roundabout.tags.junction, 'roundabout');
   assert.equal(roundabout.tags.highway, 'trunk');

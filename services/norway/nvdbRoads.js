@@ -45,6 +45,8 @@ const MATCH_M = 9;             // an NVDB line this close to an OSM road, runnin
 const MATCH_COS = 0.8;         // within about 37 degrees
 const SAMPLE_M = 10;
 const MIN_COVER = 0.4;         // share of a road's length NVDB must cover to set a value on it
+const LAMP_ROAD_REACH_M = 12;  // a street light this close to a road's centre line is looked at against that road
+const LAMP_KERB_M = 1.2;       // a light recorded on the carriageway stands this far past the road's edge
 
 /** On unless switched off in settings (localStorage mapng_norwayRoads = "0"). */
 export function norwayRoadsEnabled(storage = globalThis.localStorage) {
@@ -109,7 +111,8 @@ export async function fetchNvdbObjects(typeId, bounds, { fetchImpl = globalThis.
 /** All the road data for a box: { speedLimit: [...], widthComputed: [...], ... } (NVDB objects per kind). */
 export async function fetchNvdbRoadData(bounds, opts = {}) {
   const kinds = Object.keys(NVDB_TYPES);
-  const lists = await Promise.all(kinds.map((kind) => fetchNvdbObjects(NVDB_TYPES[kind], bounds, opts)));
+  // (street lights with where they lie on the network: which side of the road they stand on)
+  const lists = await Promise.all(kinds.map((kind) => fetchNvdbObjects(NVDB_TYPES[kind], bounds, kind === 'streetLight' ? { ...opts, include: 'egenskaper,geometri,lokasjon' } : opts)));
   return Object.fromEntries(kinds.map((kind, i) => [kind, lists[i]]));
 }
 
@@ -422,7 +425,38 @@ export function mergeNvdbRoads(data, nvdb, bounds) {
     existing((t) => t.highway === 'traffic_signals'), 30, () => { stats.signals++; });
   const bumpsNear = existing((t) => t.traffic_calming && t.traffic_calming !== 'no');
   addNodes(nvdb.speedBump, (o) => ({ traffic_calming: BUMP(propertyOf(o, 'Type')) }), bumpsNear, 10, () => { stats.bumps++; });
-  addNodes(nvdb.streetLight, () => ({ highway: 'street_lamp' }), existing((t) => t.highway === 'street_lamp'), 6, () => { stats.lights++; });
+  // -- street lights. NVDB records most of them on the road's centre line, with the side of the road they stand
+  // on (sideposisjon: H right, V left of the metering direction, M in the middle). One recorded on the
+  // carriageway is stood past its edge on that side; one in the middle, or beside the road already, stays.
+  {
+    const lampsNear = existing((t) => t.highway === 'street_lamp');
+    const roadAt = roadFinder(elements, project);
+    for (const o of nvdb.streetLight || []) {
+      let p = centreOf(geometryOf(o));
+      if (!p || !inside(p)) continue;
+      const [x, y] = project(p);
+      const road = roadAt(x, y, LAMP_ROAD_REACH_M);
+      const side = String(o.lokasjon?.stedfestinger?.[0]?.sideposisjon || '').toUpperCase();
+      if (road && !/^M/.test(side)) {
+        const clear = roadWidthOf(road.tags) / 2 + LAMP_KERB_M;
+        if (road.d < clear) {
+          // right of the way's direction; the way runs against the metering direction where it was turned round
+          let right = !/^V/.test(side);
+          if (road.tags['mapng:nvdb_reversed'] === 'yes') right = !right;
+          // (recorded off the centre line already: the side it is on is the side it stands on)
+          const cross = road.ux * (y - road.cy) - road.uy * (x - road.cx);
+          if (road.d > 0.5) right = cross < 0;
+          const nx = right ? road.uy : -road.uy, ny = right ? -road.ux : road.ux;
+          p = project.back(road.cx + nx * clear, road.cy + ny * clear);
+          stats.lightsMoved = (stats.lightsMoved || 0) + 1;
+        }
+      }
+      if (lampsNear.near(p, 6)) continue;
+      lampsNear.add(p);
+      elements.push({ type: 'node', id: id--, lat: p.lat, lon: p.lon, tags: { highway: 'street_lamp', 'mapng:source': 'nvdb', 'nvdb:id': String(o.id) } });
+      stats.lights++;
+    }
+  }
 
   // -- pedestrian crossings: a short way straight across the road at the crossing's place
   const crossingsNear = pointSet(project);
