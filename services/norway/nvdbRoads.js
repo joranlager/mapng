@@ -199,7 +199,7 @@ const number = (v) => { const n = Number(v); return Number.isFinite(n) ? n : nul
 // Skiltplate numbers that also work as junction hints for the app's own stop and give-way logic.
 const SIGN_HINTS = { 202: 'give_way', 204: 'stop' };
 /** A sign plate's number as written at the start of "Skiltnummer" ("526.2 - Envegskjøring ..." -> "526.2"; "906V - ..." -> "906V"). */
-export const signCode = (o) => (String(propertyOf(o, 'Skiltnummer') || '').match(/^\s*(\d+(?:\.\d+)*[A-Za-z]?)/) || [])[1] || null;
+export const signCode = (o) => (String(propertyOf(o, 'Skiltnummer') || '').match(/^\s*(\d+(?:\.\d+)*(?:\.?[A-Za-z]\d{0,3})?)(?![\w.])/) || [])[1] || null;
 const signName = (o) => String(propertyOf(o, 'Skiltnummer') || '').replace(/^[^-]*-\s*/, '').trim().slice(0, 80);
 const FACING = {
   'Trafikk i metreringsretning': 'with', 'Trafikk mot metreringsretning': 'against',

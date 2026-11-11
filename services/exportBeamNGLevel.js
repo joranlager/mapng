@@ -12705,6 +12705,8 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
   // ground the elevation data records at the water's surface get a bed
   // (the water showed nowhere over it), and the water blocks use this plan
   let lakePlan = null;
+  // the sea floor's pixels as lowered under the sea plane (below): the survey's water surface, not ground
+  const seabedEdits = new Map();
   if (includeWater) {
     try {
       lakePlan = planLakes({
@@ -12740,7 +12742,7 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
         heightMap: exportTerrainData.heightMap, width: exportTerrainData.width, height: exportTerrainData.height,
         minHeight: Number(exportTerrainData.minHeight) || 0,
       }, exportTerrainData.landCover, -(Number(exportTerrainData.minHeight) || 0) + (Number(seaLevelOffset) || 0));
-      seabed.apply((idx, v) => hmLake.set(idx, v));
+      seabed.apply((idx, v) => { hmLake.set(idx, v); seabedEdits.set(idx, v); });
       lakePlan.stats.seabedPixels = seabed.pixels;
     } catch (err) {
       console.warn(`${BEAMNG_EXPORT_SERVICE_LOG} Lake beds skipped: ${err?.message || err}`);
@@ -13031,11 +13033,20 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
   // a plane floods every cut below sea level: the sea as blocks over the
   // ground that was below it when a tunnel or a cut (a road sunk under a
   // bridge, a trench) now reaches under it
+  // (the ground as it was, with the sea floor already under the sea: a survey that records the sea's surface
+  // at exactly sea level, Kartverket's 1 m model, has no ground below it until the sea floor is lowered, and
+  // that lowering is no cut. Without this every such map counted as cut below the sea, and its sea, built as
+  // blocks over "ground that was below sea level", had none to stand on: no sea at all.)
+  let groundBefore = sourceHeightMap;
+  if (seabedEdits.size) {
+    groundBefore = sourceHeightMap.slice();
+    for (const [idx, v] of seabedEdits) groundBefore[idx] = Math.min(groundBefore[idx], v);
+  }
   let cutBelowSea = false;
   if (exportTerrainData.heightMap !== sourceHeightMap) {
     const seaAbs = seaZ + (Number(exportTerrainData.minHeight) || 0);
     const hm = exportTerrainData.heightMap;
-    for (let i = 0; i < hm.length && !cutBelowSea; i++) cutBelowSea = hm[i] < seaAbs && sourceHeightMap[i] >= seaAbs;
+    for (let i = 0; i < hm.length && !cutBelowSea; i++) cutBelowSea = hm[i] < seaAbs && groundBefore[i] >= seaAbs;
   }
   // (and ground below sea level the sea can't reach, a polder or a desert
   // basin: the plane flooded it; the blocks fill only what joins the edge)
@@ -13051,7 +13062,7 @@ async function runBeamNGLevelExport(terrainData, center, options, jobLog) {
   if (inlandBelowSea) console.log(`${BEAMNG_EXPORT_SERVICE_LOG} Ground below sea level the sea doesn't reach: the sea as blocks, not one plane.`);
   const seaAsBlocks = (tunnelList.length > 0 && tunnelsBelow(tunnelList, seaZ)) || cutBelowSea || inlandBelowSea;
   const seaObjects = seaAsBlocks
-    ? buildSeaBlockObjects(exportTerrainData, squareSize, biome, seaLevelOffset, dryZones, tunnelList, sourceHeightMap, seaAtUV)
+    ? buildSeaBlockObjects(exportTerrainData, squareSize, biome, seaLevelOffset, dryZones, tunnelList, groundBefore, seaAtUV)
     : [buildSeaLevelWaterPlane(exportTerrainData, biome, seaLevelOffset)];
   waterStats.sea = seaAsBlocks ? { blocks: seaObjects.length } : { plane: true };
   waterStats.pools = {};

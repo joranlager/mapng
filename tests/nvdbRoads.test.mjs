@@ -233,3 +233,18 @@ test('a pedestrian crossing becomes a way straight across its road, unless OSM h
   assert.equal(data.elements.filter((e) => e.tags?.traffic_calming === 'table').length, 1);
   assert.equal(stats.bumps, 1);
 });
+
+test('a sign number keeps the letters that say which way it points', async () => {
+  const { signCode } = await import('../services/norway/nvdbRoads.js');
+  const of = (text) => signCode({ egenskaper: [{ navn: 'Skiltnummer', verdi: text }] });
+  assert.equal(of('713.V - Vanlig vegviser, Venstre'), '713.V');
+  assert.equal(of('711.H90 - Tabellvegviser, Høyre, 90 grader'), '711.H90');
+  assert.equal(of('711.R - Tabellvegviser, Rett fram'), '711.R');
+  assert.equal(of('711.V135 - Tabellvegviser'), '711.V135');
+  assert.equal(of('570.2V - Nødutgang'), '570.2V');
+  assert.equal(of('906V - Hindermarkering'), '906V');
+  assert.equal(of('727.3K - Administrativ grense'), '727.3K');
+  assert.equal(of('362.40 - Fartsgrense 40 km/t'), '362.40');
+  assert.equal(of('202 - Vikeplikt'), '202');
+  assert.equal(of('526.2 - Envegskjøring'), '526.2');
+});

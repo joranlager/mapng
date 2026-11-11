@@ -20,14 +20,18 @@ test('new lines, arrows, small signs and road numbers are read out of the text',
   assert.deepEqual(kinds(parseSignText('@807,6@ unntatt')), [['#807.6', 'unntatt']]);
   assert.deepEqual(kinds(parseSignText('07 - 17 @372@ over 15 min')), [['07 - 17', '#372', 'over 15 min']]);
   assert.deepEqual(kinds(parseSignText('Kong Øysteins veg')), [['Kong Øysteins veg']]);
-  assert.equal(parseSignText('@723.13@ 6690')[0][0].green, false, 'a county road number: not on green');
+  assert.equal(parseSignText('@723.15@ 6690')[0][0].green, false, 'a county road number: not on green');
 });
 
 test('the road number inside the shield field, turns by letter, and a lone arrow line (Bamble, E18)', () => {
   assert.deepEqual(kinds(parseSignText('@723.12 E18@Osl@@Kristiansand')), [['[E 18]', 'Osl'], ['Kristiansand']]);
   assert.deepEqual(kinds(parseSignText('@Porsgrunn@@723.12 E18@723.13 354@@Krabberød-@@strand')), [['Porsgrunn'], ['[E 18]', '[354]'], ['Krabberød-'], ['strand']]);
-  const shields = parseSignText('@723.12 E18@723.13 354@')[0];
-  assert.deepEqual(shields.map((k) => k.green), [true, false], 'the European road on green, the county road on white');
+  // the shields by their kind: European (11), national (13), county (15); the even numbers lead to that road
+  const shields = parseSignText('@723.11 E18@723.12 E18@723.13 354@723.14 354@723.15 352@723.16 352@')[0];
+  assert.deepEqual(shields.map((k) => k.green), [true, true, true, true, false, false]);
+  assert.deepEqual(shields.map((k) => !!k.dashed), [false, true, false, true, false, true]);
+  assert.equal(parseSignText('@723.15 E18@')[0][0].green, true, 'a European road is on green whatever shield is named');
+  assert.deepEqual(kinds(parseSignText('@.R@1@@Langesund 4,2')), [['>90', '1'], ['Langesund 4,2']], '".R": straight on');
   assert.deepEqual(kinds(parseSignText('@H90@@723.13 354@723.12 E18@ Porsgrunn')), [['>0', '[354]', '[E 18]', 'Porsgrunn']]);
   assert.deepEqual(kinds(parseSignText('Krabberødstrand@H90@')), [['Krabberødstrand', '>0']]);
   assert.deepEqual(kinds(parseSignText('@ 723.11¤E18@@Kristiansand@162@@Arendal@100', { numbersAreWords: true })), [['[E 18]'], ['Kristiansand 162'], ['Arendal 100']]);
@@ -45,7 +49,7 @@ test('a direction sign takes its arrow from its own number where its wording has
   assert.equal(arrowOfSign('729'), null);
   assert.equal(arrowOfSign('570.2V'), null);
   const ahead = faceFor('711.R', '@723.12 E18@Oslo@@Kristiansand', signs);
-  assert.deepEqual(ahead.arrow, { deg: 90, side: 'left', pointed: false });
+  assert.deepEqual(ahead.arrow, { deg: 90, side: 'left', pointed: false, bent: true });
   assert.equal(faceFor('711.R', '@34@ Sentrum', signs).arrow, undefined, 'the wording has its own arrow');
   assert.ok(ahead.cols > faceFor('709.1', '@723.12 E18@Oslo@@Kristiansand', signs).cols, 'room for the arrow');
   assert.notEqual(ahead.key, faceFor('711.H90', '@723.12 E18@Oslo@@Kristiansand', signs).key);
@@ -69,7 +73,7 @@ test('direction signs and plates under a sign are drawn with NVDB\'s wording, no
   assert.equal(route.ground, '#7b1e2b', 'a cycle route sign');
   assert.equal(route.ink, '#ffffff');
   assert.ok(route.widthM >= 0.8 && route.widthM <= 2.8);
-  assert.ok(Math.abs(route.aspect - (1.3 + 0.9) / route.cols) < 1e-9);
+  assert.ok(Math.abs(route.aspect - (route.lines.length * 1.3 + 0.9) / route.cols) < 1e-9);
   assert.equal(faceFor('711.R', '@34@ Sentrum', signs).ground, '#f8a800');
   assert.equal(faceFor('711.R', '@34@ Sentrum', signs, 'Blå').ground, '#00539f', 'the colour NVDB gives the plate');
   assert.equal(faceFor('729', 'Kong Øysteins veg', signs).ground, '#ffffff');
@@ -103,4 +107,40 @@ test('a worded plate is as wide as its wording, and the colour tag reaches it', 
   assert.ok(long.width > short.width);
   assert.ok(Math.abs(short.height - short.width * short.face.aspect) < 1e-9);
   assert.equal(plan(feature('Moholt', { 'mapng:sign_colour': 'Grønn' })).plates[0].face.ground, '#00704a');
+});
+
+test('what an arrow in the wording means depends on the kind of sign', () => {
+  // an ordinary direction sign is itself the arrow: cut to a point, nothing printed
+  const left = faceFor('713.V', '@30@Tyholt', signs);
+  assert.deepEqual(left.arrow, { deg: 180, side: 'left', pointed: true });
+  assert.deepEqual(kinds(left.lines), [['Tyholt']]);
+  assert.deepEqual(faceFor('713.H', 'Sentrum@31@', signs).arrow, { deg: 0, side: 'right', pointed: true });
+  assert.equal(faceFor('713.V', 'Moholt@31@', signs).arrow.side, 'right', 'the wording wins over the sign number');
+  assert.deepEqual(faceFor('751', '@V90@ Langesund-Helgeroa', signs).arrow, { deg: 180, side: 'left', pointed: true }, 'a cycle route direction sign');
+  // arrows both ways on one pointed sign: several plates written as one, the arrows stay
+  const both = faceFor('751', '@32@Sentrum@@Rosenborg@33@', signs);
+  assert.equal(both.arrow, undefined);
+  assert.deepEqual(kinds(both.lines), [['>180', 'Sentrum'], ['Rosenborg', '>0']]);
+  // a table sign (711, and 753 for cycle routes): the arrow leads every line, a turn is drawn bent
+  const table = faceFor('753', '@32@Lade@807.6@@Strindheim@33@', signs);
+  assert.equal(table.arrow, undefined);
+  assert.deepEqual(kinds(table.lines), [['>180', 'Lade', '#807.6'], ['>0', 'Strindheim']]);
+  assert.ok(table.lines.every((l) => l[0].bent));
+  assert.deepEqual(faceFor('711.H90', '@723.13 354@723.12 E18@ Porsgrunn', signs).arrow, { deg: 0, side: 'left', pointed: false, bent: true }, 'the turn arrow at the left, as on the real sign');
+  // a street name has no arrow on it
+  const street = faceFor('729', 'Krabberødstrand@H90@', signs);
+  assert.deepEqual(kinds(street.lines), [['Krabberødstrand']]);
+  assert.equal(street.arrow, undefined);
+  assert.deepEqual(kinds(faceFor('701.1', '@H90@@723.13 354@723.12 E18@ Porsgrunn', signs).lines), [['>0', '[354]', '[E 18]', 'Porsgrunn']]);
+  assert.deepEqual(kinds(faceFor('701.1', 'Brevik@V90@', signs).lines), [['>180', 'Brevik']]);
+  assert.deepEqual(kinds(faceFor('711.R', '@34 @723.13 354 Stathelle @@723.16 352 Langesund', signs).lines), [['>90', '[354]', 'Stathelle'], ['[352]', 'Langesund']]);
+});
+
+test('slanted arrows, arrows of unknown direction, and small signs with words', () => {
+  assert.deepEqual(kinds(parseSignText('@35 @723.13 E18')), [['>135', '[E 18]']], '35: up to the left');
+  assert.deepEqual(kinds(parseSignText('@36@ Stathelle')), [['>45', 'Stathelle']], '36: up to the right');
+  assert.deepEqual(kinds(parseSignText('@41@ Lerkendal @@ 600 m')), [['Lerkendal'], ['600 m']], 'an arrow whose direction is not known is not drawn');
+  assert.deepEqual(kinds(parseSignText('@314 4.0m @31')), [['#314', '4.0m', '>0']]);
+  assert.deepEqual(kinds(parseSignText('@H90@790.15@Breviks-@@terminalen')), [['>0', '#790.15', 'Breviks-'], ['terminalen']]);
+  assert.deepEqual(kinds(parseSignText('500 m')), [['500 m']]);
 });

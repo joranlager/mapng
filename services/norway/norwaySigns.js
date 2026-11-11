@@ -106,14 +106,24 @@ const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h
 // ("$...$" is also written for "@...@", and "807,6" for "807.6".)
 
 // Arrow numbers -> the way they point, in degrees anticlockwise from "to the right".
-const ARROWS = { 30: 180, 31: 0, 32: 180, 33: 0, 34: 90, 35: 45, 36: 135, 37: 270 };
+// (30 to 34 are plain in the data: 30 and 32 on left-hand signs, 31 and 33 on right-hand ones, 34 on "straight on"
+// ones; 35 goes with left-hand signs and 36 with right-hand ones, so they are the slanted ones.)
+const ARROWS = { 30: 180, 31: 0, 32: 180, 33: 0, 34: 90, 35: 135, 36: 45 };
+// Arrow numbers seen in the data whose direction is not known (lane and exit arrows): nothing is drawn for them.
+const UNKNOWN_ARROW = /^(3[7-9]|4[0-9])$/;
 const NO_WORDING = /^(ingen|symbol|-+)$/i;
 // "H90", "V45", "R": to the right, to the left, straight on, by so many degrees off straight on.
 const turnDegrees = (side, angle) => (side === 'R' ? 90 : side === 'H' ? 90 - angle : 90 + angle);
-// A road number is on green when it is a European road's, or the shield is a national road's (723.12).
+// Road-number shields (sign 723), as NVDB names them: 723.11 a European road, 723.13 a national road that is not
+// one (both white on green), 723.15 a numbered county road (black on white). The even numbers after each (723.12,
+// .14, .16) are the same shield for a road the sign leads to, with a broken edge. A European road's number is
+// always on green; a number with no shield named ("$706$") is taken as a national road's.
 const routeToken = (shield, number) => {
   const v = String(number).replace(/\s+/g, '').toUpperCase();
-  return { t: 'route', v: /^E\d/.test(v) ? `E ${v.slice(1)}` : v, green: /^E\d/.test(v) || shield === '723.12' };
+  const kind = Number((/^723\.(\d+)$/.exec(String(shield || '')) || [])[1]);
+  const european = /^E\d/.test(v);
+  const green = european || !shield || kind === 11 || kind === 12 || kind === 13 || kind === 14;
+  return { t: 'route', v: european ? `E ${v.slice(1)}` : v, green, ...(kind >= 11 && kind <= 16 && kind % 2 === 0 ? { dashed: true } : {}) };
 };
 const ROUTE_NUMBER = /^([A-Za-z]{1,2}\s?)?\d{1,4}$/;
 // A bare three-digit number between "$" that is a sign's number rather than a road's: the classes signs come in.
@@ -147,10 +157,12 @@ export function parseSignText(text, { numbersAreWords = false } = {}) {
     if (last?.t === 'text') last.v += ` ${s}`; else line().push({ t: 'text', v: s });
   };
   const field = (f) => {
-    const inner = f.trim().replace(/(\d),(\d)/g, '$1.$2');
+    // ("807,6" is written for the sign 807.6; a distance, "4,2", keeps its comma)
+    const inner = f.trim().replace(/^(\d{3}),(\d)/, '$1.$2');
     if (!inner) return;
     if (ARROWS[inner] != null) { line().push({ t: 'arrow', deg: ARROWS[inner] }); return; }
-    const turn = /^([HVR])(\d{0,3})$/.exec(inner);
+    if (!numbersAreWords && UNKNOWN_ARROW.test(inner)) return;
+    const turn = /^\.?([HVR])(\d{0,3})$/.exec(inner);   // ("H90", "V45", "R", also written ".R")
     if (turn) { line().push({ t: 'arrow', deg: turnDegrees(turn[1], Number(turn[2] || (turn[1] === 'R' ? 0 : 90))) }); return; }
     const route = /^(723(?:\.\d+)?)(?:[\s¤]+(.+))?$/.exec(inner);
     if (route) {
@@ -163,7 +175,7 @@ export function parseSignText(text, { numbersAreWords = false } = {}) {
     const sign = /^(\d{3}(?:\.\d+)*[A-Za-z]?)(?:\s+(.+))?$/.exec(inner);
     // ("807.6", "765 Kristiansand": a small sign, and words after it; a bare number after a shield is its road number)
     // (on a distance sign, 725, a bare number is the kilometres to the place)
-    if (sign && !(numbersAreWords && /^\d+$/.test(inner)) && !(shield && ROUTE_NUMBER.test(inner)) && SIGN_NUMBER.test(sign[1].split('.')[0]) && (sign[1].includes('.') || !sign[2] || /^[A-Za-zÆØÅæøå]/.test(sign[2]))) {
+    if (sign && !(numbersAreWords && /^\d+$/.test(inner)) && !(shield && ROUTE_NUMBER.test(inner)) && (sign[1].includes('.') || SIGN_NUMBER.test(sign[1])) && !/^(m|km)\b/i.test(sign[2] || '')) {
       shield = null;
       line().push({ t: 'sign', code: sign[1] });
       if (sign[2]) words(sign[2]);
@@ -247,8 +259,14 @@ export function arrowOfSign(code) {
   const m = /^(7\d\d)(?:\.\d+)*\.?(R|[VH])(\d{0,3})$/.exec(String(code));
   if (!m) return null;
   const deg = turnDegrees(m[2], Number(m[3] || (m[2] === 'R' ? 0 : 90)));
-  return { deg, side: m[2] === 'H' ? 'right' : 'left', pointed: m[1] === '713' || m[1] === '715' };
+  return { deg, side: m[2] === 'H' ? 'right' : 'left', pointed: POINTED_SIGNS.has(Number(m[1])) };
 }
+
+// Direction signs that are arrow-shaped plates, by NVDB's names: 713 "Vanlig vegviser" and 751 "Vegviser for
+// sykkelrute". (753 is the cycle routes' table sign, 715 the exit sign: arrows are printed on those.)
+const POINTED_SIGNS = new Set([713, 751]);
+// Table signs: every line's arrow stands at its left end, and a turn is a bent arrow.
+const TABLE_SIGNS = new Set([701, 705, 707, 709, 711, 715, 753, 755, 757]);
 
 /** A worded plate's face: its lines, colours and size. Null when the wording says nothing. */
 function boardFace(code, text, colour) {
@@ -258,9 +276,39 @@ function boardFace(code, text, colour) {
   if (!lines.length) return null;
   // (a symbol plate under a sign, 807.x, with words: its own symbol first)
   if (n >= 807 && n < 808 && !lines.some((l) => l.some((k) => k.t === 'sign'))) lines = [[{ t: 'sign', code: String(code) }], ...lines];
+  const base = Math.floor(n);
+  const isArrow = (k) => k.t === 'arrow';
+  const arrows = lines.flat().filter(isArrow);
+  const dropArrows = () => { lines = lines.map((l) => l.filter((k) => !isArrow(k))).filter((l) => l.length); };
+  let own = null;
+  if (base === 729 || base === 727) {
+    // a street or place name: NVDB's arrow says which way the plate points, nothing is printed
+    dropArrows();
+  } else if (POINTED_SIGNS.has(base)) {
+    // an ordinary direction sign is itself the arrow: the plate is cut to a point, no arrow is printed.
+    // (wording with arrows both ways is several plates written as one: those keep their arrows)
+    const sides = new Set(arrows.map((k) => (Math.cos((k.deg * Math.PI) / 180) < -0.3 ? 'left' : Math.cos((k.deg * Math.PI) / 180) > 0.3 ? 'right' : 'ahead')));
+    if (sides.size === 1 && !sides.has('ahead')) {
+      const side = [...sides][0];
+      dropArrows();
+      own = { deg: side === 'left' ? 180 : 0, side, pointed: true };
+    } else if (!arrows.length) own = arrowOfSign(code);
+  } else if (direction && !arrows.length) {
+    // a table sign: the arrow its number gives it, where its wording has none
+    own = arrowOfSign(code);
+  }
+  if (!lines.length) return null;
+  // an arrow stands at the outer end of its line: at the start when it points left or ahead, at the end when right
+  lines = lines.map((l) => {
+    const rest = l.filter((k) => !isArrow(k));
+    const first = l.filter((k) => isArrow(k) && Math.cos((k.deg * Math.PI) / 180) <= 0.3).slice(0, 1);
+    const last = l.filter((k) => isArrow(k) && Math.cos((k.deg * Math.PI) / 180) > 0.3).slice(0, 1);
+    // (on a table sign the arrow leads the line whichever way it points, and a turn is drawn bent)
+    if (TABLE_SIGNS.has(base)) return [...[...first, ...last].slice(0, 1).map((k) => ({ ...k, bent: true })), ...rest];
+    return [...first, ...rest, ...(first.length ? [] : last)];
+  });
+  if (own && !own.pointed && TABLE_SIGNS.has(base)) own = { ...own, side: 'left', bent: true };
   lines = wrapSignLines(lines, direction ? 18 : 11);
-  // the arrow the sign's number gives it, where its wording has none
-  const own = direction && !lines.some((l) => l.some((k) => k.t === 'arrow')) ? arrowOfSign(code) : null;
   const sideEm = own ? (own.pointed ? 1.0 : 1.5) : 0;
   const cols = Math.max(direction ? 6 : 5, ...lines.map(lineEm)) + 1.2 + sideEm;
   const rows = lines.length * 1.3 + 0.9;
@@ -270,7 +318,7 @@ function boardFace(code, text, colour) {
   const widthM = direction && n < 710 ? Math.min(3.6, Math.max(1.8, cols * 0.26))
     : direction ? Math.min(3.2, Math.max(0.8, cols * 0.16)) : Math.min(0.9, Math.max(0.5, cols * 0.085));
   return {
-    key: `text_${hash(`${name}|${own ? `${own.deg}${own.side}${own.pointed}` : ''}|${JSON.stringify(lines)}`)}`, kind: 'text', text: String(text), lines, ground, ink,
+    key: `text_${hash(`${name}|${own ? `${own.deg}${own.side}${own.pointed}${own.bent || ''}` : ''}|${JSON.stringify(lines)}`)}`, kind: 'text', text: String(text), lines, ground, ink,
     cols, aspect: rows / cols, widthM, ...(own ? { arrow: own } : {}),
   };
 }
@@ -532,8 +580,22 @@ export function drawZoneFace(value, end) {
   return c;
 }
 
+// A turn arrow as on a table sign: up from the bottom, then round to the left or the right (deg 180 or 0).
+function drawTurnArrow(g, cx, cy, r, deg, colour) {
+  const d = Math.cos((deg * Math.PI) / 180) < 0 ? -1 : 1;      // -1 to the left
+  const w = r * 0.3;                                             // the stroke's width
+  g.fillStyle = colour;
+  // the stem, from the bottom up to the turn, then the arm out to the head
+  g.fillRect(cx - d * r * 0.55 - w / 2, cy - r * 0.2, w, r * 1.05);
+  g.fillRect(Math.min(cx - d * r * 0.55 - w / 2, cx + d * r * 0.25), cy - r * 0.2 - w / 2 - r * 0.15, Math.abs(d * r * 0.8) + w / 2, w);
+  g.beginPath();
+  g.moveTo(cx + d * r * 0.2, cy - r * 0.85); g.lineTo(cx + d * r * 0.9, cy - r * 0.35 - w / 2 + w / 2); g.lineTo(cx + d * r * 0.2, cy + r * 0.15);
+  g.closePath(); g.fill();
+}
+
 // An arrow in a box of half-size r round (cx, cy): drawn pointing right, then turned (the picture's y runs down).
-function drawArrow(g, cx, cy, r, deg, colour) {
+function drawArrow(g, cx, cy, r, deg, colour, bent = false) {
+  if (bent && Math.abs(Math.cos((deg * Math.PI) / 180)) > 0.95) { drawTurnArrow(g, cx, cy, r, deg, colour); return; }
   g.save(); g.translate(cx, cy); g.rotate((-deg * Math.PI) / 180);
   g.fillStyle = colour;
   g.beginPath();
@@ -570,15 +632,15 @@ export function drawTextFace(face, symbols = new Map()) {
     else { g.moveTo(l, t); g.lineTo(r, t); g.lineTo(r, b); g.lineTo(l, b); }
     g.closePath(); g.fill();
   };
-  g.clearRect?.(0, 0, W, H);
-  g.fillStyle = face.ink; outline(0);
+  // (a pointed sign is a rectangular plate: its field is drawn to a point, the corners beside the point dark)
+  g.fillStyle = face.ink; g.fillRect(0, 0, W, H);
   g.fillStyle = face.ground; outline(edge);
   // the room the wording has: beside the arrow or the point
   const sideW = face.arrow ? (tip ? tip * 0.75 : em * 1.5) : 0;
   const x0 = em * 0.45 + (side === 'left' ? sideW : 0), x1 = W - em * 0.45 - (side === 'right' ? sideW : 0);
   if (face.arrow && !tip) {
     const r = Math.min(em * 0.85, H * 0.36);
-    drawArrow(g, side === 'left' ? em * 0.5 + sideW / 2 : W - em * 0.5 - sideW / 2, H / 2, r, face.arrow.deg, face.ink);
+    drawArrow(g, side === 'left' ? em * 0.5 + sideW / 2 : W - em * 0.5 - sideW / 2, H / 2, r, face.arrow.deg, face.ink, face.arrow.bent);
   }
   const font = (px) => `bold ${Math.round(px)}px Arial, Helvetica, sans-serif`;
   const rowH = (H - em * 0.9) / Math.max(1, lines.length);
@@ -605,14 +667,24 @@ export function drawTextFace(face, symbols = new Map()) {
       } else if (k.t === 'route') {
         // a road number: white on green with a white edge (European and national roads), or black on white
         const h = em * 1.0 * scale, rim = Math.max(2, em * 0.06 * scale);
-        g.fillStyle = k.green ? '#ffffff' : '#111111'; g.fillRect(x, cy - h / 2, w, h);
-        g.fillStyle = k.green ? '#00704a' : '#ffffff'; g.fillRect(x + rim, cy - h / 2 + rim, w - 2 * rim, h - 2 * rim);
+        const paper = k.green ? '#00704a' : '#ffffff', line = k.green ? '#ffffff' : '#111111';
+        if (k.dashed) {
+          // (a road the sign leads to: the shield's edge is broken)
+          g.fillStyle = paper; g.fillRect(x, cy - h / 2, w, h);
+          const dash = Math.max(3, h * 0.16);
+          g.fillStyle = line;
+          for (let p = 0; p < w; p += dash * 2) { g.fillRect(x + p, cy - h / 2, Math.min(dash, w - p), rim); g.fillRect(x + p, cy + h / 2 - rim, Math.min(dash, w - p), rim); }
+          for (let p = 0; p < h; p += dash * 2) { g.fillRect(x, cy - h / 2 + p, rim, Math.min(dash, h - p)); g.fillRect(x + w - rim, cy - h / 2 + p, rim, Math.min(dash, h - p)); }
+        } else {
+          g.fillStyle = line; g.fillRect(x, cy - h / 2, w, h);
+          g.fillStyle = paper; g.fillRect(x + rim, cy - h / 2 + rim, w - 2 * rim, h - 2 * rim);
+        }
         g.font = font(em * 0.78 * scale); g.fillStyle = k.green ? '#ffffff' : '#111111'; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillText(k.v, x + w / 2, cy + em * 0.04);
       } else if (k.t === 'sign') {
         const h = em * 1.15 * scale;
         g.drawImage(symbols.get(k.code), x, cy - h / 2, w, h);
-      } else drawArrow(g, x + w / 2, cy, w / 2, k.deg, face.ink);
+      } else drawArrow(g, x + w / 2, cy, w / 2, k.deg, face.ink, k.bent);
       x += w + em * 0.3 * scale;
     });
   });
