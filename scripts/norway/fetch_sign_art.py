@@ -14,7 +14,9 @@
 # The script says what it is in its User-Agent and X-Client, and reads Lovdata only if Lovdata's robots.txt
 # allows that page. Standard library only.
 #
-#   python scripts/norway/fetch_sign_art.py                       fetch from NVDB and Lovdata
+#   python scripts/norway/fetch_sign_art.py                       import norske_skilt_komplett in the project when it
+#                                                                 is there; else fetch from NVDB and Lovdata
+#   python scripts/norway/fetch_sign_art.py --fetch               fetch from NVDB and Lovdata
 #   python scripts/norway/fetch_sign_art.py --from <folder>       import a folder already downloaded
 #   python scripts/norway/fetch_sign_art.py --no-lovdata          NVDB only
 import argparse
@@ -40,6 +42,8 @@ NVDB_ENDPOINTS = [
 ]
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "public", "norway_signs"))
+# The folder of pictures kept in the project: used when it is there and nothing else is asked for.
+LOCAL = os.path.normpath(os.path.join(HERE, "..", "..", "norske_skilt_komplett"))
 EXTENSIONS = (".png", ".gif", ".jpg", ".jpeg", ".svg", ".webp")
 CODE = r"[1-9]\d{2}(?:\.\d+)*[A-Za-z]?"
 # Sign numbers seen in NVDB (central Trondheim), to report how many have a picture.
@@ -251,8 +255,9 @@ def nvdb_signs():
         return {}
     out = {}
     for v in prop.get("tillatte_verdier") or []:
-        name = str(v.get("navn") or "").strip()
-        short = str(v.get("kortverdi") or "").strip()
+        # (the catalogue calls a value's text "verdi" and its number "kortnavn"; older answers "navn" and "kortverdi")
+        name = str(v.get("verdi") or v.get("navn") or "").strip()
+        short = str(v.get("kortnavn") or v.get("kortverdi") or "").strip()
         code = normal_code(short) or normal_code(name.split(" - ")[0]) or normal_code((re.match(rf"^({CODE})", name) or [None, None])[1])
         if not code:
             continue
@@ -388,9 +393,12 @@ def imported(folder):
 def main():
     ap = argparse.ArgumentParser(description="Collect Norwegian road sign pictures for MapNG.")
     ap.add_argument("--from", dest="folder", help='a folder already downloaded ("norske_skilt_komplett")')
+    ap.add_argument("--fetch", action="store_true", help="fetch from NVDB and Lovdata even when norske_skilt_komplett is in the project")
     ap.add_argument("--no-lovdata", action="store_true", help="do not read Skiltforskriften on Lovdata")
     ap.add_argument("--out", default=OUT)
     args = ap.parse_args()
+    if not args.folder and not args.fetch and os.path.isdir(LOCAL):
+        args.folder = LOCAL
     out_dir = os.path.abspath(args.out)
     os.makedirs(out_dir, exist_ok=True)
     print(f"Saving to {out_dir}")

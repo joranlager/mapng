@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import JSZip from 'jszip';
 import {
   kommunerInBox, findKommuneLink, parseBuildingsGml, parseAddressesGml,
-  loadKommune, norwayBuildingsForArea, MATRIKKEL_ATOM, MATRIKKEL_WFS_BASE,
+  loadKommune, norwayBuildingsForArea, MATRIKKEL_ATOM, KOMMUNEINFO_BASE,
 } from '../services/norway/matrikkelFiles.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -63,13 +63,23 @@ test('finds the 25832 zip for a municipality in the Atom feed', () => {
   assert.equal(findKommuneLink(BYG_ATOM, '9999'), null);
 });
 
-test('kommunerInBox reads the municipalities of the points it returns', async () => {
+test('kommunerInBox asks kommuneinfo at a grid of points and skips points outside Norway', async () => {
+  let asked = 0;
   const fetchImpl = async (url) => {
-    assert.ok(url.startsWith(`${MATRIKKEL_WFS_BASE}/wfs.matrikkelen-bygningspunkt?`));
-    assert.ok(url.includes('typenames=app%3ABygning'));
-    return response('<x><app:kommunenummer>5001</app:kommunenummer><app:kommunenummer>5001</app:kommunenummer></x>');
+    assert.ok(url.startsWith(`${KOMMUNEINFO_BASE}/punkt?nord=`));
+    assert.ok(url.includes('koordsys=4258'));
+    asked++;
+    const east = Number(/ost=([\d.]+)/.exec(url)[1]);
+    if (east > 10.395) return { ok: false, status: 404, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => ({ kommunenummer: east < 10.385 ? '5001' : '5028' }) };
   };
-  assert.deepEqual(await kommunerInBox({ south: 63.4, north: 63.43, west: 10.38, east: 10.40 }, { fetchImpl }), ['5001']);
+  assert.deepEqual(await kommunerInBox({ south: 63.4, north: 63.43, west: 10.38, east: 10.40 }, { fetchImpl }), ['5001', '5028']);
+  assert.equal(asked, 25);
+});
+
+test('kommunerInBox throws when the service fails everywhere', async () => {
+  const fetchImpl = async () => ({ ok: false, status: 503, json: async () => ({}) });
+  await assert.rejects(kommunerInBox({ south: 63.4, north: 63.43, west: 10.38, east: 10.40 }, { fetchImpl }), /503/);
 });
 
 test('loadKommune downloads each zip once and serves repeats from the cache', async () => {
@@ -94,7 +104,7 @@ test('loadKommune downloads each zip once and serves repeats from the cache', as
 test('norwayBuildingsForArea keeps only buildings inside the box', async () => {
   const bounds = { south: 63.40, north: 63.42, west: 10.35, east: 10.38 };
   const fetchImpl = async (url) => {
-    if (url.includes('wfs.matrikkelen-bygningspunkt')) return response('<app:kommunenummer>5001</app:kommunenummer>');
+    if (url.startsWith(KOMMUNEINFO_BASE)) return { ok: true, status: 200, json: async () => ({ kommunenummer: '5001' }) };
     if (url === MATRIKKEL_ATOM.buildings) return response(BYG_ATOM);
     if (url === MATRIKKEL_ATOM.addresses) return response(ADR_ATOM);
     if (url === BYG_ZIP) return response(await zipOf('b.gml', bygningGml));
@@ -110,7 +120,7 @@ test('norwayBuildingsForArea keeps only buildings inside the box', async () => {
 });
 
 test('a failing download reports the status instead of returning partial data', async () => {
-  const fetchImpl = async (url) => (url.includes('wfs.matrikkelen') ? response('<app:kommunenummer>5001</app:kommunenummer>') : response('', { ok: false, status: 503 }));
+  const fetchImpl = async (url) => response('', { ok: false, status: 503 });
   await assert.rejects(() => loadKommune('5001', { fetchImpl, cache: undefined }), /503/);
 });
 

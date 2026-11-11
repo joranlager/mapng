@@ -13,6 +13,8 @@ import { getLoadedOsmFile, osmFileCoverage } from "./osmFile.js";
 import { norwayBuildingsEnabled, touchesNorway, mergeNorwayBuildings, NORWAY_BUILDINGS_ATTRIBUTION } from "./norway/matrikkelBuildings.js";
 import { norwayBuildingsForArea } from "./norway/matrikkelFiles.js";
 import { norwayRoadsEnabled, fetchNvdbRoadData, mergeNvdbRoads, NVDB_ATTRIBUTION } from "./norway/nvdbRoads.js";
+import { norwayRoadHeightsEnabled, fetchNvdbNetwork, mergeNvdbProfiles } from "./norway/nvdbNetwork.js";
+import { norwayRoadGeometryEnabled, mergeNvdbGeometry } from "./norway/nvdbGeometry.js";
 
 const OVERTURE_ENDPOINT = "overture-maps";
 // (the user's own OSM file: osmFile.js)
@@ -371,6 +373,12 @@ export const parseOverpassResponse = (data, bounds) => {
       }
     } else if (el.type === "way") {
       const geometry = convertGeom(el.geometry);
+      // a measured 3D road line from NVDB (services/norway/nvdbNetwork.js): heights for the bridge and tunnel
+      // solvers, not something drawn
+      if (el.tags?.["mapng:nvdb_profile"]) {
+        if (geometry.length > 1) rawFeatures.push({ id: `nvdb_profile_${el.id}`, type: "nvdb_profile", geometry, tags: el.tags });
+        continue;
+      }
       if (geometry.length > 1) {
         ways[el.id] = { id: el.id, nodes: geometry, tags: el.tags || {} };
       }
@@ -1189,6 +1197,34 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
       }
     }
 
+    // NVDB's road network (Statens vegvesen), read once: the roads' surveyed lines and heights.
+    const inNorway = endpoint !== OVERTURE_ENDPOINT && !halves && touchesNorway(bounds);
+    let nvdbNetwork = null;
+    if (inNorway && (norwayRoadGeometryEnabled() || norwayRoadHeightsEnabled())) {
+      onStatus?.("Reading the road network from NVDB (Statens vegvesen)...");
+      try {
+        nvdbNetwork = await fetchNvdbNetwork(bounds, { signal });
+      } catch (error) {
+        if (error?.name === "AbortError" || signal?.aborted) throw error;
+        console.warn("[OSM] NVDB road network unavailable; roads stay where OSM has them, bridge and tunnel heights are worked out from the terrain:", error?.message || error);
+      }
+    }
+
+    // The roads moved onto NVDB's surveyed centrelines (OSM's tags and junctions kept), and NVDB roads OSM lacks.
+    let norwayRoadGeometry = null;
+    if (nvdbNetwork && norwayRoadGeometryEnabled()) {
+      try {
+        const merged = mergeNvdbGeometry(data, nvdbNetwork, bounds);
+        data = merged.data;
+        norwayRoadGeometry = merged.stats;
+        const g = merged.stats;
+        console.log(`[OSM] NVDB road geometry: ${g.snapped} of ${g.ways} roads moved onto NVDB's lines (${g.moved} points, mean ${g.meanMove} m, most ${g.maxMove} m; ${g.inserted} NVDB points put in), ${g.added} roads added from NVDB.`);
+        onStatus?.(`NVDB: ${g.snapped} roads on NVDB's surveyed lines, ${g.added} added.`);
+      } catch (error) {
+        console.warn("[OSM] NVDB road geometry could not be used; roads stay where OSM has them:", error?.message || error);
+      }
+    }
+
     // Norwegian road data (NVDB, Statens vegvesen): speed limits, widths and lanes onto the OSM roads, and the
     // signs, signals, speed bumps, street lights and guard rails OSM lacks.
     let norwayRoads = null;
@@ -1207,6 +1243,22 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
       }
     }
 
+    // Measured road heights (NVDB's 3D road network) beside the map's bridge and tunnel roads: the export pins
+    // bridge decks and tunnel profiles to them.
+    let norwayRoadHeights = null;
+    if (nvdbNetwork && norwayRoadHeightsEnabled()) {
+      try {
+        const merged = mergeNvdbProfiles(data, nvdbNetwork, bounds);
+        data = merged.data;
+        norwayRoadHeights = merged.stats;
+        console.log(`[OSM] NVDB road heights: ${merged.stats.kept} of ${merged.stats.lines} measured road lines kept, beside ${merged.stats.structures} bridge and tunnel roads.`);
+        onStatus?.(`NVDB: measured heights for ${merged.stats.structures} bridge and tunnel roads.`);
+      } catch (error) {
+        if (error?.name === "AbortError" || signal?.aborted) throw error;
+        console.warn("[OSM] NVDB road heights unavailable; bridge and tunnel heights are worked out from the terrain:", error?.message || error);
+      }
+    }
+
     lastOSMRequestInfo = {
       ...queryParams,
       endpointUsed: endpoint,
@@ -1217,6 +1269,8 @@ export const fetchOSMData = async (bounds, { onStatus, signal, skipBox = null, k
       ...(overtureBuildings ? { overtureBuildings, attribution: OVERTURE_ATTRIBUTION } : {}),
       ...(norwayBuildings ? { norwayBuildings } : {}),
       ...(norwayRoads ? { norwayRoads } : {}),
+      ...(norwayRoadHeights ? { norwayRoadHeights } : {}),
+      ...(norwayRoadGeometry ? { norwayRoadGeometry } : {}),
       ...(norwayBuildings || norwayRoads ? { attribution: [overtureBuildings ? OVERTURE_ATTRIBUTION : null, norwayBuildings ? NORWAY_BUILDINGS_ATTRIBUTION : null, norwayRoads ? NVDB_ATTRIBUTION : null].filter(Boolean).join('; ') } : {}),
       ...(String(endpoint).includes(OSM_FILE_ENDPOINT) ? { osmFile: { name: getLoadedOsmFile()?.name, coverage: result.coverage, share: result.share, loadedAt: getLoadedOsmFile()?.loadedAt } } : {}),
       startedAt,

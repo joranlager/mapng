@@ -38,7 +38,8 @@ export const searchLocation = async (query) => {
         format: 'json',
         addressdetails: '1',
         limit: '8',
-        dedupe: '1'
+        dedupe: '1',
+        countrycodes: 'no'   // Norway only
     });
 
     for (const endpoint of NOMINATIM_ENDPOINTS) {

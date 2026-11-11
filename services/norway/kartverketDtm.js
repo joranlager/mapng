@@ -175,7 +175,11 @@ export async function fetchKartverketDtmRaw(bounds, opts = {}) {
     const tiff = await openTiff(tile.url, { fetchImpl, signal });
     try {
       const image = await tiff.getImage(0);
-      const epsg = image.geoKeys?.ProjectedCSTypeGeoKey;
+      // (Kartverket's files name the system by citation: the code is 32767, "user defined", with UTM zone 33N
+      // as the projection, 16033)
+      const keys = image.geoKeys || {};
+      const named = keys.ProjectionGeoKey === 16033 || /UTM[_ ]Zone[_ ]33N/i.test(`${keys.GTCitationGeoKey || ''} ${keys.PCSCitationGeoKey || ''}`);
+      const epsg = keys.ProjectedCSTypeGeoKey === 32767 && named ? KARTVERKET_DTM_EPSG : keys.ProjectedCSTypeGeoKey;
       if (epsg && epsg !== KARTVERKET_DTM_EPSG) { console.warn(`[Kartverket] Tile ${tile.id} is in EPSG:${epsg}, not ${KARTVERKET_DTM_EPSG}. Skipped.`); continue; }
       const [ox, oy] = image.getOrigin();
       const [rx, ry] = image.getResolution();

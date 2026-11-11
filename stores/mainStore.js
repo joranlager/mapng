@@ -3,8 +3,10 @@ import { ref, computed, shallowRef } from 'vue';
 import { loadBatchState } from '../services/batchJob';
 import { terrainMode, setTerrainMode } from '../composables/useTerrainMode.js';
 import { emptyMask, maskHasAreas } from '../services/backgroundMask.js';
+import { insideNorway } from '../services/norway/matrikkelBuildings.js';
 
-const DEFAULT_CENTER = { lat: 35.1983, lng: -111.6513 };
+// (Norway only: the app starts in Trondheim, and a saved place outside Norway is not kept)
+const DEFAULT_CENTER = { lat: 63.4305, lng: 10.3951 };
 
 const sanitizeCenter = (candidate) => {
   const lat = Number(candidate?.lat);
@@ -28,7 +30,8 @@ export const useMainStore = defineStore('main', () => {
   } catch {
     persistedCenter = null;
   }
-  const center = ref(sanitizeCenter(persistedCenter));
+  const savedCenter = sanitizeCenter(persistedCenter);
+  const center = ref(insideNorway(savedCenter.lat, savedCenter.lng) ? savedCenter : { ...DEFAULT_CENTER });
   const zoom = ref(parseInt(localStorage.getItem('mapng_zoom')) || 13);
   const resolution = ref(parseInt(localStorage.getItem('mapng_resolution')) || 1024);
   const isDarkMode = ref(localStorage.getItem('theme') === 'dark');

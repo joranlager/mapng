@@ -30,6 +30,8 @@ const SMOOTH_SIGMA_M = 15;             // vertical curves on the profile
 const PORTAL_CURVE_SIGMA_M = 8;        // ... and on the whole road with its approaches (no V at a portal)
 const CURVE_COVER_M = 0.5;             // cover those curves may take in the tube
 const JOIN_M = 0.5;
+const MEASURED_BLEND_M = 80;           // a surveyed profile meets the approaches' heights over this length
+const MEASURED_SIGMA_M = 6;            // ... and is smoothed this much (survey noise)
 
 // Cross-section (m): the road's carriageway + a walkway each side, walls,
 // then an elliptical arch; the lining is LINING_M thick.
@@ -329,6 +331,12 @@ function stations(xy, step = STEP_M) {
  */
 export function solveTunnel(path, opts) {
   if (path.gallery) return solveGallery(path, opts);
+  // on the road's surveyed profile where the caller has one and the ground covers it; else as worked out
+  if (opts.measuredProfile) {
+    const surveyed = solveTunnelAs(path, opts, false);
+    if (surveyed.ok) return surveyed;
+    opts = { ...opts, measuredProfile: null };
+  }
   const bored = solveTunnelAs(path, opts, false);
   if (bored.ok || !/not under ground|bore only/.test(bored.reason)) return bored;
   // mapped as a tunnel, but too little ground over it: on a hillside (the
@@ -505,7 +513,7 @@ function buildGalleryGeometry(t) {
   return [{ pos: T.pos, uv: T.uv, from: t.line[0].s, to: t.line[t.line.length - 1].s }];
 }
 
-function solveTunnelAs(path, { groundAt, approaches = [null, null], isFreeEnd = () => false, squareSize = 1, raw = false }, cutCover) {
+function solveTunnelAs(path, { groundAt, approaches = [null, null], isFreeEnd = () => false, squareSize = 1, raw = false, measuredProfile = null }, cutCover) {
   const st = stations(path.xy);
   const n = st.length;
   const L = st[n - 1].s;
@@ -517,6 +525,9 @@ function solveTunnelAs(path, { groundAt, approaches = [null, null], isFreeEnd = 
   const need = crown + LINING_M + (cutCover ? CC_COVER_M : MIN_COVER_M); // ground over the road
   const g = st.map((p) => groundAt(p.x, p.y));
   const free = [isFreeEnd(st[0].x, st[0].y), isFreeEnd(st[n - 1].x, st[n - 1].y)];
+  // the road's surveyed heights along the bore (Norway: NVDB), where the caller has them: the profile follows
+  // them instead of the straight grade between the portals (a subsea tunnel dips, a spiral tunnel climbs)
+  const measured = cutCover ? null : measuredProfile?.(st, g) || null;
   const bridged = [0, 1].map((e) => Number.isFinite(approaches[e]?.deckZ));
   // a box sunk below a bridge's deck: no way down to it
   if (cutCover && (bridged[0] || bridged[1])) return { ok: false, reason: 'a bridge meets a cut-and-cover tunnel', length: L };
@@ -533,13 +544,14 @@ function solveTunnelAs(path, { groundAt, approaches = [null, null], isFreeEnd = 
     const zo = endZ[1 - e];
     return clamp(g[e ? n - 1 : 0] - need, zo - MAX_GRADE * L, zo + MAX_GRADE * L);
   };
-  if (free[0] && free[1]) { endZ[0] = g[0] - need; endZ[1] = g[n - 1] - need; }
+  if (measured) { if (free[0]) endZ[0] = measured[0]; if (free[1]) endZ[1] = measured[n - 1]; }
+  else if (free[0] && free[1]) { endZ[0] = g[0] - need; endZ[1] = g[n - 1] - need; }
   else if (free[0]) endZ[0] = fromOther(0);
   else if (free[1]) endZ[1] = fromOther(1);
   // No road climbs from one end to the other (mismatched OSM ends, or the
   // elevation data): left on the ground rather than a ramp inside the hill.
   const rise = Math.abs(endZ[1] - endZ[0]);
-  if (!cutCover && rise > MAX_GRADE * 1.5 * L + 5) return { ok: false, reason: `ends ${Math.round(rise)} m apart in height over ${Math.round(L)} m`, length: L };
+  if (!cutCover && !measured && rise > MAX_GRADE * 1.5 * L + 5) return { ok: false, reason: `ends ${Math.round(rise)} m apart in height over ${Math.round(L)} m`, length: L };
   let z;
   if (cutCover) {
     // the box under the street all along, no steeper than MAX_GRADE (the
@@ -556,6 +568,15 @@ function solveTunnelAs(path, { groundAt, approaches = [null, null], isFreeEnd = 
     const g2 = MAX_GRADE * 0.97;
     for (let i = 1; i < n; i++) z[i] = Math.min(z[i], z[i - 1] + g2 * (st[i].s - st[i - 1].s));
     for (let i = n - 2; i >= 0; i--) z[i] = Math.min(z[i], z[i + 1] + g2 * (st[i + 1].s - st[i].s));
+  } else if (measured) {
+    // The surveyed profile, eased onto the heights the approaches have at the ends (the survey and the
+    // terrain model differ a little there). Its grades are the road's own: not limited.
+    const blend = Math.min(MEASURED_BLEND_M, L / 2) || 1;
+    const d0 = endZ[0] - measured[0]; const d1 = endZ[1] - measured[n - 1];
+    z = st.map((p, i) => measured[i] + d0 * Math.max(0, 1 - p.s / blend) + d1 * Math.max(0, 1 - (L - p.s) / blend));
+    z[0] = endZ[0];
+    z[n - 1] = endZ[1];
+    z = smoothPinned(z, STEP_M, MEASURED_SIGMA_M);
   } else {
     // The straight grade between the portals, lowered under the hill where it
     // would come too close to the surface, as far as the grade allows.
@@ -681,6 +702,7 @@ function solveTunnelAs(path, { groundAt, approaches = [null, null], isFreeEnd = 
   }
   const tunnel = {
     ok: true,
+    measured: !!measured,
     line: all,
     iS: off + iS,
     iN: off + iN,

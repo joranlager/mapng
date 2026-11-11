@@ -1,7 +1,7 @@
 // Loads Kartverket Matrikkel buildings and addresses for the municipalities
 // under a map area, and turns them into records matrikkelBuildings.js merges.
 //
-// Flow: a small WFS box query names the municipalities (kommunenummer); each
+// Flow: Kartverket's kommuneinfo service names the municipalities (kommunenummer); each
 // municipality's building and address GML zips come from the Matrikkel Atom
 // feeds (EPSG:25832), are cached, and are parsed here.
 //
@@ -9,12 +9,10 @@
 import JSZip from 'jszip';
 import { utm32ToLatLon } from './matrikkelBuildings.js';
 
-export const MATRIKKEL_WFS_BASE = 'https://wfs.geonorge.no/skwms1';
 export const MATRIKKEL_ATOM = {
   buildings: 'https://nedlasting.geonorge.no/geonorge/ATOM-feeds/MatrikkelenBygning_AtomFeedGML.xml',
   addresses: 'https://nedlasting.geonorge.no/geonorge/ATOM-feeds/MatrikkelenAdresse_AtomFeedGML.xml',
 };
-const WFS_CRS = 'urn:ogc:def:crs:EPSG::4258';   // stored system of the WFS (latitude, longitude)
 const FILE_PROJECTION = '25832';                 // the zip files we read (easting, northing)
 
 // Feature members of a GML file, any namespace prefix.
@@ -51,26 +49,30 @@ const memoryCache = () => {
   return { get: async (k) => store.get(k) ?? null, put: async (k, v) => { store.set(k, v); } };
 };
 
+export const KOMMUNEINFO_BASE = 'https://ws.geonorge.no/kommuneinfo/v1';
+
 /**
- * Municipality numbers (kommunenummer) of the building points in the box. The
- * box is asked in a 3 x 3 grid of small WFS queries, so a municipality that
- * holds only a corner of the map is still found.
+ * Municipality numbers (kommunenummer) under the box: Kartverket's kommuneinfo
+ * service is asked at a grid of points (corners, edges and inside), so a
+ * municipality that holds only a corner of the map is still found. A point
+ * outside Norway (sea, another country) answers 404 and counts for nothing.
+ * (The Matrikkel WFS used before answers 500 on box queries.)
  */
-export async function kommunerInBox(bounds, { fetchImpl = globalThis.fetch, signal, sample = 30, grid = 3 } = {}) {
+export async function kommunerInBox(bounds, { fetchImpl = globalThis.fetch, signal, grid = 4 } = {}) {
   const found = new Set();
-  const dLat = (bounds.north - bounds.south) / grid, dLng = (bounds.east - bounds.west) / grid;
-  const cells = [];
-  for (let i = 0; i < grid; i++) for (let j = 0; j < grid; j++) cells.push([bounds.south + i * dLat, bounds.west + j * dLng]);
-  await Promise.all(cells.map(async ([south, west]) => {
-    const bbox = `${south},${west},${south + dLat},${west + dLng},${WFS_CRS}`;
-    const params = new URLSearchParams({
-      service: 'WFS', version: '2.0.0', request: 'GetFeature', typenames: 'app:Bygning',
-      srsName: WFS_CRS, bbox, count: String(sample),
-    });
-    const res = await fetchImpl(`${MATRIKKEL_WFS_BASE}/wfs.matrikkelen-bygningspunkt?${params}`, { signal });
-    if (!res.ok) throw new Error(`Matrikkel WFS answered ${res.status}`);
-    for (const m of (await res.text()).matchAll(/kommunenummer>(\d{4})</g)) found.add(m[1]);
+  const points = [];
+  for (let i = 0; i <= grid; i++) for (let j = 0; j <= grid; j++) {
+    points.push([bounds.south + (i / grid) * (bounds.north - bounds.south), bounds.west + (j / grid) * (bounds.east - bounds.west)]);
+  }
+  let failed = 0, lastStatus = 0;
+  await Promise.all(points.map(async ([lat, lon]) => {
+    const res = await fetchImpl(`${KOMMUNEINFO_BASE}/punkt?nord=${lat.toFixed(6)}&ost=${lon.toFixed(6)}&koordsys=4258`, { signal, headers: { Accept: 'application/json' } });
+    if (res.status === 404) return;
+    if (!res.ok) { failed++; lastStatus = res.status; return; }
+    const number = (await res.json())?.kommunenummer;
+    if (/^\d{4}$/.test(String(number || ''))) found.add(String(number));
   }));
+  if (!found.size && failed) throw new Error(`Kartverket kommuneinfo answered ${lastStatus}`);
   return [...found].sort();
 }
 

@@ -25,7 +25,8 @@ import { createLocalToWGS84 } from "./geoUtils.js";
 import { fetchKron86GridForBounds, isWithinKron86Coverage } from "./kron86.js";
 import { fetchMapterhornRaw } from "./mapterhorn.js";
 import { fetchKartverketDtmRaw, norwayElevationEnabled } from "./norway/kartverketDtm.js";
-import { touchesNorway } from "./norway/matrikkelBuildings.js";
+import { touchesNorway, insideNorway } from "./norway/matrikkelBuildings.js";
+import { measureNorwayBuildingHeights, norwayBuildingHeightsEnabled } from "./norway/buildingHeights.js";
 import { isGroundLevelRoad, smoothRoadsInHeightmap } from "./roadSmoother.js";
 import { snapRoadsToTerrain } from "./roadSnap.js";
 import { roundRoadCorners } from "./roadCurves.js";
@@ -1870,7 +1871,7 @@ export const fetchTerrainData = async (
     flat = false,
     raw = false,
     // free Mapterhorn lidar where it exists (elevation source "mapterhorn")
-    useMapterhorn = false,
+    useMapterhorn: useMapterhornChoice = false,
     // buildings, woods and viaduct decks taken out of the global 30 m (dsmGround.js); off: as downloaded
     groundFilter = true,
     // river water brought down to its banks on the global 30 m (waterBanks.js); off: as downloaded
@@ -1887,6 +1888,13 @@ export const fetchTerrainData = async (
     lat: center.lat,
     lng: normalizeLng(center.lng),
   };
+  // This app builds maps of Norway only: the Norwegian sources are what it is made of.
+  if (!insideNorway(normalizedCenter.lat, normalizedCenter.lng)) {
+    throw new Error("MapNG for Norway builds maps of places in Norway only. Move the map area into Norway.");
+  }
+  // In Norway the best terrain is Kartverket's 1 m model, read ahead of Mapterhorn below: also when the
+  // global 30 m ("Standard") is the chosen source. A source asked for by name (a key, an uploaded file) is kept.
+  const useMapterhorn = useMapterhornChoice || (!useUSGS && !useGPXZ && !useKRON86);
   const effectiveMetersPerPixel = Number.isFinite(Number(processingMetersPerPixel)) && Number(processingMetersPerPixel) > 0
     ? Number(processingMetersPerPixel)
     : 1;
@@ -2394,6 +2402,18 @@ export const fetchTerrainData = async (
       completedAt: new Date().toISOString(),
       elementCount: 0,
     };
+  }
+  // Norway: building heights as surveyed (Kartverket's surface model minus its terrain model under each outline)
+  if (includeOSM && !flat && norwayBuildingHeightsEnabled() && osmFeatures.some((f) => f.type === "building")) {
+    try {
+      const measured = await measureNorwayBuildingHeights(osmFeatures, finalBounds, { signal, onProgress, metersPerPixel: Math.max(1, Math.min(2, effectiveMetersPerPixel)) });
+      osmFeatures = measured.features;
+      console.info(`[Kartverket] Building heights measured on ${measured.stats.measured} of ${measured.stats.buildings} buildings (surface model DOM1 minus DTM1${measured.stats.metersPerPixel ? `, ${measured.stats.metersPerPixel} m` : ""}).`);
+      onProgress?.(`Kartverket: measured heights on ${measured.stats.measured} buildings.`);
+    } catch (error) {
+      if (error?.name === "AbortError" || signal?.aborted) throw error;
+      console.warn("[Kartverket] Building heights could not be measured; heights come from the building types:", error?.message || error);
+    }
   }
   // what covers the ground (ESA WorldCover), with the map data
   const landCoverRead = { bounds: finalBounds, width, processingMetersPerPixel: effectiveMetersPerPixel };

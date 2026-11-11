@@ -54,6 +54,7 @@ import { composeTerrain } from './structures/terrainCompose.js';
 import { addFineGroundDetail } from './terrainDetail.js';
 import { styleDecks, linkCrossings, thinArchDecks, buildStyleGeometry, PAINTS as BRIDGE_PAINTS } from './bridgeStyles.js';
 import { prepareSurvey, lidarPins } from './lidarDecks.js';
+import { profileIndexFromFeatures, nvdbBridgePins, measuredTunnelProfile } from './norway/nvdbNetwork.js';
 import { buildLampGlowDAE, lampGlowMaterialDef, LAMP_GLOW_SHAPE, buildFloodGlowDAE, floodGlowMaterialDef, FLOOD_GLOW_SHAPE } from './lampGlow.js';
 import { resolveBuildingRoadConflicts } from './buildingRoadConflicts.js';
 import { shapingSwitches, allShaping, shapingPlan, rawDeckClasses } from './structures/shaping.js';
@@ -5007,6 +5008,18 @@ const pathLength = (xy) => xy.reduce((n, p, i) => (i ? n + Math.hypot(p[0] - xy[
  * half width. Bridges are solved first: a bridge meeting a portal sets its
  * height (and gets no cutting).
  */
+// Norway: NVDB's surveyed road lines of a map (services/norway/nvdbNetwork.js) in the level's frame, or null.
+const nvdbProfileCache = new WeakMap();
+function nvdbProfilesOf(terrainData, squareSize) {
+  if (!terrainData?.osmFeatures) return null;
+  const hit = nvdbProfileCache.get(terrainData);
+  if (hit && hit.squareSize === squareSize) return hit.index;
+  const index = profileIndexFromFeatures(terrainData.osmFeatures,
+    (lat, lng) => geoToWorldPoint(lat, lng, terrainData, squareSize, 0), -(Number(terrainData.minHeight) || 0));
+  nvdbProfileCache.set(terrainData, { squareSize, index });
+  return index;
+}
+
 function* solveExportTunnels(drivableRoads, terrainData, squareSize, bridges, halfOf, { done = new Set(), shape = true } = {}) {
   const out = { bySeg: new Map(), tunnels: [], skipped: [], holes: [], graded: new Set(), tube: new Set() };
   // before the bridges are solved (bridges null): a tunnel meeting a bridge
@@ -5016,6 +5029,9 @@ function* solveExportTunnels(drivableRoads, terrainData, squareSize, bridges, ha
   const groundAt = (x, y) => getTerrainHeightAtWorldXY(x, y, terrainData, squareSize);
   const edge = (terrainData.width * squareSize) / 2 - 3;
   const isFreeEnd = (x, y) => Math.abs(x) >= edge || Math.abs(y) >= edge;
+  // Norway: the roads' surveyed heights (NVDB), for the tunnels' profiles
+  const surveyed = nvdbProfilesOf(terrainData, squareSize);
+  const measuredProfile = surveyed ? (st, g) => measuredTunnelProfile(st, g, surveyed) : null;
   const parts = [];
   const others = [];
   drivableRoads.forEach((seg, segIndex) => {
@@ -5175,7 +5191,7 @@ function* solveExportTunnels(drivableRoads, terrainData, squareSize, bridges, ha
       for (let i = 0; i + 1 < xy.length && !streetsOver; i++) if (planCrossingPoints([xy[i], xy[i + 1]], r.xy).length) streetsOver = true;
     }
     // (shaping off on fine elevation: portals at the survey's own portal faces)
-    const t = solveTunnel({ xy: bore, half, gallery }, { groundAt, approaches, isFreeEnd, squareSize, streetsOver, raw: !shape && !terrainData?.coarseElevation });
+    const t = solveTunnel({ xy: bore, half, gallery }, { groundAt, approaches, isFreeEnd, squareSize, streetsOver, raw: !shape && !terrainData?.coarseElevation, measuredProfile });
     const osm = path.idx.map((i) => parts[i].osm);
     if (!t.ok) { out.skipped.push({ osm, reason: t.reason, length: t.length }); return null; }
     t.osm = osm;
@@ -5336,6 +5352,7 @@ function* solveExportTunnels(drivableRoads, terrainData, squareSize, bridges, ha
   }
   out.holes = [...holes];
   if (globalThis.__MAPNG_TUNNEL_DEBUG) globalThis.__MAPNG_TUNNEL_DEBUG(out, { groundAt, toWorld, toPixel, bridges, width, height, hmAt: (idx) => hm.at(idx) - minHeight });
+  if (surveyed) console.log(`[BeamNG Export] Tunnels on NVDB's surveyed profile: ${out.tunnels.filter((t) => t.measured).length} of ${out.tunnels.length}.`);
   console.log(`[BeamNG Export] Tunnels: ${out.tunnels.length} bored (${out.tunnels.map((t) => `${Math.round(t.tubeLength)} m`).join(', ')}), ${out.skipped.length} left on the ground, ${out.holes.length} portal hole square(s).`);
   return out;
 }
@@ -5900,6 +5917,15 @@ function* decalRoadSteps(terrainData, squareSize, opts = {}) {
         const measured = lidarPins(structureGraph, opts.lidar, (x, y) => getTerrainHeightAtWorldXY(x, y, terrainData, squareSize) + minH, minH);
         structureGraph.pins.push(...measured.pins);
         opts.lidar.result = measured;
+      }
+      // Norway: bridge decks pinned at the heights NVDB surveyed along them
+      if (opts.structureSolver === 'v2') {
+        const surveyed = nvdbProfilesOf(terrainData, squareSize);
+        if (surveyed) {
+          const measured = nvdbBridgePins(structureGraph, surveyed, (x, y) => getTerrainHeightAtWorldXY(x, y, terrainData, squareSize));
+          structureGraph.pins.push(...measured.pins);
+          console.log(`[BeamNG Export] Bridges on NVDB's surveyed heights: ${measured.pinned} of ${measured.bridges} bridge stretches (${measured.pins.length} stations).`);
+        }
       }
       // terrain shaping switched off somewhere: the stations held on their
       // ground, the bridges built as decks wherever they leave it

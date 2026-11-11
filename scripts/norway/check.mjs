@@ -112,6 +112,37 @@ await section('4. Roads (NVDB, Statens vegvesen)', async () => {
   return stats.roads > 0;
 });
 
+await section('5. Road heights on bridges and in tunnels (NVDB road network)', async () => {
+  const { fetchNvdbNetwork, mergeNvdbProfiles, carRoadLines } = await import('../../services/norway/nvdbNetwork.js');
+  const segments = await fetchNvdbNetwork(bounds, { fetchImpl: countingFetch });
+  const lines = carRoadLines(segments);
+  let lo = Infinity, hi = -Infinity;
+  for (const line of lines) for (const p of line) { lo = Math.min(lo, p.z); hi = Math.max(hi, p.z); }
+  console.log(`network segments: ${segments.length}, car road lines with heights: ${lines.length}, heights ${lo.toFixed(1)} to ${hi.toFixed(1)} m`);
+  const query = `[out:json][timeout:60];way[highway](${bounds.south},${bounds.west},${bounds.north},${bounds.east});out geom;`;
+  const res = await countingFetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: new URLSearchParams({ data: query }) });
+  if (!res.ok) { console.log(`OpenStreetMap (Overpass) answered ${res.status}; the match with OSM's bridges and tunnels was not checked`); return lines.length > 0; }
+  const { stats } = mergeNvdbProfiles(await res.json(), segments, bounds);
+  console.log(`OSM bridge and tunnel roads here: ${stats.structures}; measured road lines kept beside them: ${stats.kept}`);
+  return lines.length > 0;
+});
+
+await section('6. Building heights (Kartverket DOM1 minus DTM1)', async () => {
+  const { measureNorwayBuildingHeights } = await import('../../services/norway/buildingHeights.js');
+  const query = `[out:json][timeout:60];way[building](${bounds.south},${bounds.west},${bounds.north},${bounds.east});out geom;`;
+  const res = await countingFetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: new URLSearchParams({ data: query }) });
+  if (!res.ok) { console.log(`OpenStreetMap (Overpass) answered ${res.status}; no outlines to measure`); return false; }
+  const features = (await res.json()).elements.filter((e) => e.geometry?.length >= 3)
+    .map((e) => ({ type: 'building', id: String(e.id), geometry: e.geometry.map((p) => ({ lat: p.lat, lng: p.lon })), tags: e.tags || {} }));
+  const out = await measureNorwayBuildingHeights(features, bounds, { fetchImpl: countingFetch });
+  console.log(`OSM building outlines: ${features.length} (with a height in OSM: ${features.filter((f) => f.tags.height).length}); measured: ${out.stats.measured} at ${out.stats.metersPerPixel} m`);
+  const got = out.features.filter((f) => f.tags['mapng:height_source']);
+  const hs = got.map((f) => Number(f.tags.height)).sort((x, y) => x - y);
+  if (hs.length) console.log(`heights: lowest ${hs[0]} m, median ${hs[hs.length >> 1]} m, highest ${hs[hs.length - 1]} m`);
+  for (const f of got.filter((x) => x.tags.name).slice(0, 8)) console.log(`  ${f.tags.name}: ${f.tags.height} m${f.tags['building:levels'] ? ` (OSM: ${f.tags['building:levels']} levels)` : ''}`);
+  return out.stats.measured > 0;
+});
+
 console.log('\n=== Summary ===');
 for (const [name, state] of results) console.log(`${state.padEnd(8)} ${name}`);
 console.log('\nDone.');
