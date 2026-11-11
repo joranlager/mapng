@@ -402,7 +402,9 @@ export function mergeNvdbRoads(data, nvdb, bounds) {
     if (!code || !p || !inside(p)) continue;
     const tags = { 'mapng:sign': code, 'mapng:sign_name': signName(o) };
     const text = String(propertyOf(o, 'Tekst') ?? '').trim();
-    if (text) tags['mapng:sign_text'] = text.slice(0, 60);
+    if (text) tags['mapng:sign_text'] = text.slice(0, 240);
+    const colour = String(propertyOf(o, 'Farge') ?? '').trim();
+    if (colour) tags['mapng:sign_colour'] = colour;
     const facing = FACING[propertyOf(o, 'Ansiktsside, rettet mot')];
     if (facing) tags['mapng:sign_facing'] = facing;
     const hint = SIGN_HINTS[code];

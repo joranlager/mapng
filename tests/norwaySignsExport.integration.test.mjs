@@ -17,6 +17,7 @@ function install({ art }) {
       return (this._ctx ||= {
         fillStyle: '#000', font: '', textAlign: '', textBaseline: '',
         drawImage() {}, fillRect() {}, clearRect() {}, putImageData() {}, beginPath() {}, arc() {}, fill() {}, fillText() {},
+        measureText: (t) => ({ width: String(t).length * 10 }), save() {}, restore() {}, translate() {}, rotate() {}, moveTo() {}, lineTo() {}, closePath() {}, stroke() {},
         createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
       });
     }

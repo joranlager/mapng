@@ -67,7 +67,11 @@ Nothing here has been run in BeamNG.
    the tunnel, and under each bridge that has a road under it.
 3. Look at the sign plates in BeamNG. They are a new kind of object (generated DAE, a `diffuseMap` material with
    `alphaTest`): the texture may be upside down, the cut-out may not work, plates may face the wrong way.
-4. How NVDB writes a speed-limit plate's number (sign 362) has not been seen in real data.
+4. Sign wording: a speed limit's number is in its sign number ("362.40"); zone signs (366, 368) carry it in the
+   text. Direction signs (7xx) and plates under a sign (8xx) are drawn from NVDB's text, whose system is "@@" for a
+   new line, "@32@" for an arrow (30 to 37), "@807.6@" for a small sign, "@723.12@E6" or "$E6$" for a road number
+   (`parseSignText` in `services/norway/norwaySigns.js`). What arrows 35, 36 and 37 point at is a guess (30/32 left,
+   31/33 right and 34 ahead are seen in the data). The letters are Arial, not the road sign alphabet.
 
 ## Known limits
 
