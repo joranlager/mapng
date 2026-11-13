@@ -78,32 +78,24 @@
       <button id="btn-start" class="primary" disabled>Start overføring</button>
     </section>
 
+    <section class="card" id="send-report" hidden>
+      <h2 id="send-report-title">Siste overføring</h2>
+      <p id="done-info"></p>
+      <div class="minibar"><div id="send-progress"></div></div>
+      <p id="player-status" class="mono muted"></p>
+    </section>
+
     <section class="card help muted">
-      <p>Begge enhetene bruker <b>frontkameraet</b>. Hold skjermene mot hverandre (30–60 cm), slik at hvert kamera ser den andre skjermen. Kvitterings-QR-en på mottakeren er bevisst stor og enkel; hold den gjerne nærmere avsenderens kamera enn selve avstanden mellom skjermene. Kamerabildet nederst på avsenderen får grønn ramme når kvitteringer leses, rød når ikke. Hver QR-kode har en id inni seg. Mottakeren kvitterer id-ene den har fått med egne QR-koder; avsenderen tar kvitterte id-er bort fra skjermen med en gang og sender dem aldri igjen. Neste runde inneholder bare id-er som ikke er kvittert. Hvis avsenderen ikke klarer å lese kvitteringene, sender den bare alt på nytt i løkke, som i versjon 1.</p>
+      <p>Under overføringen viser avsenderskjermen bare QR-koder. Trykk på skjermen (eller Esc) for å stoppe; mellomrom = pause, + / − = raskere/saktere. Når mottakeren har kvittert alt, lukkes avspillingen av seg selv.</p>
+      <p>Begge enhetene bruker <b>frontkameraet</b>. Hold skjermene mot hverandre (30–60 cm), slik at hvert kamera ser den andre skjermen. Kvitterings-QR-en på mottakeren er bevisst stor og enkel; hold den gjerne nærmere avsenderens kamera enn selve avstanden mellom skjermene. Hver QR-kode har en id inni seg. Mottakeren kvitterer id-ene den har fått med egne QR-koder; avsenderen tar kvitterte id-er bort fra skjermen med en gang og sender dem aldri igjen. Neste runde inneholder bare id-er som ikke er kvittert. Hvis avsenderen ikke klarer å lese kvitteringene, sender den bare alt på nytt i løkke, som i versjon 1.</p>
     </section>
   </main>
 
   <!-- Fullscreen sender -->
   <div id="player" hidden>
     <canvas id="player-canvas"></canvas>
-    <div id="player-bar">
-      <video id="send-video" class="mini" playsinline muted autoplay></video>
-      <div class="bar-text">
-        <div id="player-status"></div>
-        <div class="minibar"><div id="send-progress"></div></div>
-      </div>
-      <button id="btn-slower" title="Saktere">−</button>
-      <button id="btn-faster" title="Raskere">+</button>
-      <button id="btn-pause">Pause</button>
-      <button id="btn-stop">Stopp</button>
-    </div>
-    <div id="player-done" hidden>
-      <div>
-        <p class="big">✔ Mottakeren har fått alt</p>
-        <p id="done-info"></p>
-        <button id="btn-done-close" class="primary">Lukk</button>
-      </div>
-    </div>
+    <!-- Kameraet leser kvitteringer, men vises ikke: avsenderskjermen viser bare QR-koder. -->
+    <video id="send-video" class="hidden-cam" playsinline muted autoplay></video>
   </div>
 
   <!-- ===================== RECEIVE ===================== -->

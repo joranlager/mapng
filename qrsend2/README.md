@@ -2,7 +2,7 @@
 
 Som `../qrsend`, men begge enhetene bruker **frontkameraet** og holdes skjerm mot skjerm:
 
-- **Avsender** viser pakker med 10 data-QR-koder og leser samtidig mottakerens skjerm med frontkameraet.
+- **Avsender** viser bare QR-koder (10 per pakke) og leser samtidig mottakerens skjerm med frontkameraet (kamerabildet vises ikke). Trykk på skjermen eller Esc stopper; mellomrom = pause, +/− = fart. Resultatet vises når avspillingen lukkes.
 - Hver data-QR har bilde-id og en **id** (bitnummeret) i headeren inni koden.
 - **Mottaker** leser data-QR-kodene og viser små **kvitterings-QR-koder** (QR versjon 2, 25×25 ruter):
   - nye id-er kvitteres straks som en liste («kvitterer id 30, 31, …», inntil 11 per kode, hver vist 2 ganger),

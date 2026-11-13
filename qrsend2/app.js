@@ -328,7 +328,7 @@ function resizePlayer() {
 function drawPacket() {
   if (!tx.active) return;
   const dpr = window.devicePixelRatio || 1;
-  const W = pc.width, H = pc.height - Math.round($('player-bar').offsetHeight * dpr);
+  const W = pc.width, H = pc.height;
   pctx.fillStyle = '#fff';
   pctx.fillRect(0, 0, W, pc.height);
   const g = bestGrid(tx.perPacket, W, H);
@@ -343,11 +343,6 @@ function drawPacket() {
     const y = Math.round(offY + Math.floor(k / g.cols) * rowH + (g.cell - size) / 2);
     pctx.drawImage(q, x, y, size, size);
   });
-  if (tx.waiting) {
-    pctx.fillStyle = '#5d6673'; pctx.font = `${Math.round(18 * dpr)}px -apple-system, sans-serif`;
-    pctx.textAlign = 'center';
-    pctx.fillText('Venter på kvitteringer før neste runde …', W / 2, H / 2);
-  }
   updateSendStatus();
 }
 
@@ -359,14 +354,11 @@ function updateSendStatus() {
   else if (tx.foreignAck && !tx.ackReads) ackTxt = performance.now() - tx.t0 > 5000
     ? 'mottakeren viser fortsatt en ANNEN overføring – sikt kameraet mot avsenderens skjerm, eller trykk Nullstill'
     : 'venter på at mottakeren bytter til denne overføringen';
-  else if (ackAge == null) ackTxt = 'ingen kvittering lest ennå – sikt kameraet mot mottakerens skjerm (trykk på kamerabildet for å forstørre)';
+  else if (ackAge == null) ackTxt = 'ingen kvittering lest ennå – sikt kameraet mot mottakerens skjerm';
   else if (ackAge < 2) ackTxt = `kvitteringer OK (${tx.ackReads} lest)`;
   else ackTxt = `siste kvittering for ${ackAge.toFixed(0)} s siden – sikt kameraet mot mottakeren`;
   $('player-status').textContent =
     `${idLabel(tx.id)} · runde ${tx.round}: ${Math.min(tx.roundSent, tx.roundSize)}/${tx.roundSize} · mottatt ${tx.ackedCount}/${n} · ${tx.interval} ms · ${ackTxt}`;
-  const v = $('send-video');
-  v.classList.toggle('ack-ok', ackAge != null && ackAge < 1.5);
-  v.classList.toggle('ack-bad', tx.camOk && (ackAge == null || ackAge >= 1.5));
   $('send-progress').style.width = `${(100 * tx.ackedCount) / n}%`;
 }
 
@@ -433,8 +425,8 @@ async function startSend() {
     ackReads: 0, foreignAck: 0, otherReads: 0, camOk: false, waited: false, waiting: false,
     active: true, paused: false, done: false,
   });
-  $('btn-pause').textContent = 'Pause';
-  $('player-done').hidden = true;
+  $('send-report').hidden = true;
+  $('done-info').textContent = '';
   $('player').hidden = false;
   document.documentElement.requestFullscreen?.().catch(() => {});
   keepAwake(true);
@@ -458,14 +450,22 @@ function finishSend() {
   sendScanner.stop();
   updateSendStatus();
   const secs = (performance.now() - tx.t0) / 1000;
+  stopSend();
+  $('send-report-title').textContent = '✔ Mottakeren har fått alt';
   $('done-info').textContent =
     `${tx.chunks.length} QR-koder levert på ${fmtTime(secs)} i ${tx.round} runde(r). ` +
     `${tx.sentTotal} koder vist totalt (${(tx.sentTotal / tx.chunks.length).toFixed(2)}× per bit).`;
-  $('player-done').hidden = false;
   if (navigator.vibrate) navigator.vibrate(150);
 }
 
 function stopSend() {
+  if (!tx.active) return;
+  updateSendStatus();
+  if (!tx.done) {
+    $('send-report-title').textContent = 'Overføringen ble stoppet';
+    $('done-info').textContent = `Mottakeren har kvittert ${tx.ackedCount} av ${tx.chunks.length} QR-koder.`;
+  }
+  $('send-report').hidden = false;
   tx.active = false;
   clearTimeout(tx.timer);
   clearInterval(tx.statusTimer);
@@ -476,18 +476,19 @@ function stopSend() {
 }
 
 $('btn-start').onclick = startSend;
-$('send-video').onclick = () => { $('send-video').classList.toggle('big'); setTimeout(resizePlayer, 50); };
-$('btn-stop').onclick = stopSend;
-$('btn-done-close').onclick = stopSend;
-$('btn-pause').onclick = () => {
+pc.onclick = () => { if (tx.active && confirm('Stoppe overføringen?')) stopSend(); };
+function togglePause() {
   tx.paused = !tx.paused;
-  $('btn-pause').textContent = tx.paused ? 'Fortsett' : 'Pause';
   if (!tx.paused) { clearTimeout(tx.timer); tx.timer = setTimeout(tick, tx.interval); }
-};
-$('btn-slower').onclick = () => { tx.interval = Math.min(5000, Math.round(tx.interval * 1.25)); updateSendStatus(); };
-$('btn-faster').onclick = () => { tx.interval = Math.max(30, Math.round(tx.interval / 1.25)); updateSendStatus(); };
+}
 window.addEventListener('resize', () => tx.active && resizePlayer());
-document.addEventListener('keydown', (e) => { if (tx.active && e.key === 'Escape') stopSend(); });
+document.addEventListener('keydown', (e) => {
+  if (!tx.active) return;
+  if (e.key === 'Escape') stopSend();
+  else if (e.key === ' ') { e.preventDefault(); togglePause(); }
+  else if (e.key === '+') tx.interval = Math.max(30, Math.round(tx.interval / 1.25));
+  else if (e.key === '-') tx.interval = Math.min(5000, Math.round(tx.interval * 1.25));
+});
 
 // =====================================================================
 // RECEIVER
