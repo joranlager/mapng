@@ -94,8 +94,8 @@
   <!-- Fullscreen sender -->
   <div id="player" hidden>
     <canvas id="player-canvas"></canvas>
-    <!-- Kameraet leser kvitteringer, men vises ikke: avsenderskjermen viser bare QR-koder. -->
-    <video id="send-video" class="hidden-cam" playsinline muted autoplay></video>
+    <!-- Kameraet ligger under QR-lerretet: det «vises» (Safari pauser usynlige videoer), men dekkes helt. -->
+    <video id="send-video" class="under-cam" playsinline muted autoplay></video>
   </div>
 
   <!-- ===================== RECEIVE ===================== -->
@@ -142,8 +142,9 @@
 
   <!-- Fullskjerm-kvitteringer: bare QR-koder -->
   <div id="ack-player" hidden>
-    <canvas id="ack-canvas"></canvas>
-    <video id="video" class="hidden-cam" playsinline muted autoplay></video>
+    <video id="video" class="under-cam" playsinline muted autoplay></video>
+    <canvas id="ack-canvas" class="invisible"></canvas>
+    <div id="ack-hint">Sikt frontkameraet mot avsenderens skjerm.<br>Skjermen bytter til kvitterings-QR når første bit er lest.<br><small id="ack-hint-status"></small></div>
   </div>
 
   <script type="module" src="app.js"></script>
