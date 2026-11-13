@@ -65,50 +65,20 @@ button:disabled { opacity: .5; cursor: default; }
 #preview { display: block; max-width: 100%; max-height: 320px; margin: 12px auto 0; border-radius: 8px; }
 #file-info { text-align: center; }
 
-/* Player */
-#player { position: fixed; inset: 0; background: #fff; z-index: 10; }
-#player-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
-#player-bar {
-  position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; align-items: center;
-  padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); background: rgba(0,0,0,.72); color: #fff; font-size: 13px;
-}
-#player-bar span { flex: 1; font-family: ui-monospace, Menlo, Consolas, monospace; }
-#player-bar button { padding: 5px 12px; background: #333; color: #fff; border-color: #555; }
+/* Fullskjerm: avsender (data) og mottaker (kvitteringer) – bare QR-koder på hvitt */
+#player, #ack-player { position: fixed; inset: 0; background: #fff; z-index: 10; }
+#player-canvas, #ack-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+/* Kameraet er usynlig, men fortsatt «vist», så nettleseren leverer bilder */
+video.hidden-cam { position: fixed !important; right: 0; bottom: 0; width: 2px !important; height: 2px !important; opacity: 0.01; pointer-events: none; }
 
-/* Receiver */
-.video-wrap { position: relative; margin-top: 12px; background: #000; border-radius: 10px; overflow: hidden; aspect-ratio: 16/9; }
-#video { width: 100%; height: 100%; object-fit: contain; display: block; }
-#video-hint { position: absolute; inset: 0; display: grid; place-items: center; color: #aaa; font-size: 14px; }
+/* Mottaker */
 .progress { height: 10px; background: var(--missing); border-radius: 5px; overflow: hidden; margin-top: 12px; }
 #progress-bar { height: 100%; width: 0; background: var(--ok); transition: width .2s; }
-#chunk-map { width: 100%; height: 40px; display: block; border-radius: 4px; }
+#chunk-map { width: 100%; height: 24px; display: block; border-radius: 4px; margin-bottom: 8px; }
 #result-img { display: block; max-width: 100%; margin: 0 auto 8px; border-radius: 8px; }
 
-/* ---- v2 additions ---- */
 h1 small { font-weight: 400; color: var(--muted); font-size: 14px; }
-#video.mini, video.mini { width: 120px; height: 90px; object-fit: cover; background: #000; border-radius: 6px; transform: scaleX(-1); flex: none; }
-#player-bar .bar-text { flex: 1; min-width: 0; font-family: ui-monospace, Menlo, Consolas, monospace; }
-#player-bar video.mini { width: 72px; height: 54px; }
-.minibar { height: 5px; background: #444; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.minibar { border-radius: 3px; overflow: hidden; }
 #send-progress { height: 100%; width: 0; background: #22c55e; transition: width .2s; }
-#player-done { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255,255,255,.94); text-align: center; color: #15181d; }
-#player-done .big { font-size: 28px; font-weight: 700; margin: 0 0 8px; }
-.ack-wrap { position: relative; margin: 12px auto 0; background: #fff; border-radius: 10px; width: min(100%, 62vh); aspect-ratio: 1; }
-#ack-canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
-#ack-hint { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; color: #5d6673; font-size: 14px; }
-#chunk-map { height: 24px; }
-.preview-row { margin-top: 10px; flex-wrap: nowrap; }
-.preview-row span { font-size: 13px; }
-#player-bar video.mini { cursor: pointer; border: 3px solid #666; box-sizing: content-box; }
-#player-bar video.mini.ack-ok { border-color: #22c55e; }
-#player-bar video.mini.ack-bad { border-color: #ef4444; }
-#player-bar video.mini.big { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) scaleX(-1); width: min(90vw, 640px); height: auto; aspect-ratio: 4/3; z-index: 5; }
-#ack-label { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; color: #555; font-size: 12px; }
-@media (max-width: 600px) {
-  #view-recv { padding: 0; }
-  #view-recv .card { border-radius: 0; border-left: 0; border-right: 0; padding: 12px; }
-  #view-recv .ack-wrap { width: calc(100% + 24px); margin: 12px -12px 0; border-radius: 0; }
-}
-/* Usynlig, men fortsatt «vist» så nettleseren leverer kamerabilder */
-video.hidden-cam { position: fixed; right: 0; bottom: 0; width: 2px; height: 2px; opacity: 0.01; pointer-events: none; }
 #send-report .minibar { background: var(--missing); height: 8px; margin: 8px 0; }
+button.wide { margin-top: 12px; width: 100%; padding: 14px; font-size: 17px; }

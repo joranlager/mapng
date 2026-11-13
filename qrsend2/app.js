@@ -1,15 +1,17 @@
 import qrcode from './vendor/qrcode.mjs';
 import {
-  buildStream, makeChunks, parseChunk, bytesToBinaryString, Assembler, makeAcks, makeReceivedAck, parseAck, ACK_SEGMENT_BYTES, ACK_MAX_MISSING,
+  makeChunks, parseChunk, bytesToBinaryString, Assembler, makeAck, parseAck, ACK_IDS_PER_CODE,
 } from './protocol.js';
 
 const $ = (id) => document.getElementById(id);
 const fmtBytes = (n) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} kB` : `${(n / 1048576).toFixed(2)} MB`);
 const fmtTime = (s) => (s < 60 ? `${s.toFixed(1)} s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`);
 
-const ACK_FRAME_MS = 300;       // hvor ofte mottakeren bytter kvitterings-QR
+const ACK_FRAME_MS = 300;       // hvor ofte mottakeren bytter kvitteringsbilde
+const ACK_AFTER_DONE_MS = 8000; // mottakeren viser kvitteringer så lenge etter at alt er mottatt
 const ACK_GRACE_MS = 1000;     // avsender venter så lenge på kvitteringer før en ny runde
 const ACK_REPEAT = 2;          // hver ny id kvitteres i minst så mange kvitteringsbilder
+const ACK_MIN_AGE_MS = 200;     // kvittering godtas bare for numre avsenderen har vist minst så lenge
 const SENDER_SCAN_FPS = 10;     // avsenderen trenger bare å lese kvitteringer
 
 // ---------------------------------------------------------------- tabs
@@ -42,7 +44,6 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && wakeWanted) keepAwake(true);
 });
 
-const idLabel = (id) => '#' + (id >>> 0).toString(16).padStart(8, '0').slice(0, 4).toUpperCase();
 
 // ---------------------------------------------------------------- QR drawing
 function qrMatrixCanvas(bytes, ecc) {
@@ -60,6 +61,39 @@ function qrMatrixCanvas(bytes, ecc) {
   }
   ctx.putImageData(img, 0, 0);
   return c;
+}
+
+function bestGrid(count, W, H) {
+  let best = { cols: 1, rows: count, cell: 0 };
+  for (let cols = 1; cols <= count; cols++) {
+    const rows = Math.ceil(count / cols);
+    const cell = Math.min(W / cols, H / rows);
+    if (cell > best.cell) best = { cols, rows, cell };
+  }
+  return best;
+}
+
+// Tegner QR-koder i et rutenett med `slots` plasser over hele lerretet – bare QR-koder på hvitt.
+function drawQrGrid(canvas, ctx, qrs, slots) {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+  const g = bestGrid(slots, W, H);
+  const offX = (W - g.cols * g.cell) / 2, offY = (H - g.rows * g.cell) / 2;
+  ctx.imageSmoothingEnabled = false;
+  qrs.forEach((q, k) => {
+    const mod = Math.max(1, Math.floor(g.cell / (q.width + 6)));
+    const size = mod * q.width;
+    const x = Math.round(offX + (k % g.cols) * g.cell + (g.cell - size) / 2);
+    const y = Math.round(offY + Math.floor(k / g.cols) * g.cell + (g.cell - size) / 2);
+    ctx.drawImage(q, x, y, size, size);
+  });
+}
+
+function fitCanvas(c) {
+  const dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(c.clientWidth * dpr);
+  c.height = Math.round(c.clientHeight * dpr);
 }
 
 // ---------------------------------------------------------------- camera scanner
@@ -250,10 +284,10 @@ function updateEstimate() {
 // ---------------------------------------------------------------- transfer state
 const tx = {
   active: false, paused: false, done: false,
-  id: 0, chunks: [], qrCache: new Map(), acked: null, ackedCount: 0,
+  chunks: [], qrCache: new Map(), acked: null, ackedCount: 0,
   queue: [], round: 0, roundSize: 0, roundSent: 0, current: [],
   perPacket: 10, interval: 300, ecc: 'M', timer: 0, lastAck: 0, t0: 0, sentTotal: 0,
-  ackReads: 0, foreignAck: 0, otherReads: 0, camOk: false,
+  ackReads: 0, otherReads: 0, camOk: false,
 };
 const pc = $('player-canvas');
 const pctx = pc.getContext('2d', { alpha: false });
@@ -308,41 +342,16 @@ function nextPacket() {
   return pkt;
 }
 
-function bestGrid(count, W, H, labelH = 0) {
-  let best = { cols: 1, rows: count, cell: 0 };
-  for (let cols = 1; cols <= count; cols++) {
-    const rows = Math.ceil(count / cols);
-    const cell = Math.min(W / cols, H / rows - labelH);
-    if (cell > best.cell) best = { cols, rows, cell };
-  }
-  return best;
-}
-
 function resizePlayer() {
-  const dpr = window.devicePixelRatio || 1;
-  pc.width = Math.round(pc.clientWidth * dpr);
-  pc.height = Math.round(pc.clientHeight * dpr);
+  fitCanvas(pc);
   drawPacket();
 }
 
 function drawPacket() {
   if (!tx.active) return;
-  const dpr = window.devicePixelRatio || 1;
-  const W = pc.width, H = pc.height;
-  pctx.fillStyle = '#fff';
-  pctx.fillRect(0, 0, W, pc.height);
-  const g = bestGrid(tx.perPacket, W, H);
-  const rowH = g.cell;
-  const offX = (W - g.cols * g.cell) / 2, offY = (H - g.rows * rowH) / 2;
-  pctx.imageSmoothingEnabled = false;
-  tx.current.forEach((ci, k) => {
-    const q = qrFor(ci);
-    const mod = Math.max(1, Math.floor(g.cell / (q.width + 6)));
-    const size = mod * q.width;
-    const x = Math.round(offX + (k % g.cols) * g.cell + (g.cell - size) / 2);
-    const y = Math.round(offY + Math.floor(k / g.cols) * rowH + (g.cell - size) / 2);
-    pctx.drawImage(q, x, y, size, size);
-  });
+  const now = performance.now();
+  for (const i of tx.current) if (!tx.shownAt[i]) tx.shownAt[i] = now;
+  drawQrGrid(pc, pctx, tx.current.map(qrFor), tx.perPacket);
   updateSendStatus();
 }
 
@@ -351,14 +360,11 @@ function updateSendStatus() {
   const ackAge = tx.lastAck ? (performance.now() - tx.lastAck) / 1000 : null;
   let ackTxt;
   if (!tx.camOk) ackTxt = 'kamera av – sender alt i løkke';
-  else if (tx.foreignAck && !tx.ackReads) ackTxt = performance.now() - tx.t0 > 5000
-    ? 'mottakeren viser fortsatt en ANNEN overføring – sikt kameraet mot avsenderens skjerm, eller trykk Nullstill'
-    : 'venter på at mottakeren bytter til denne overføringen';
   else if (ackAge == null) ackTxt = 'ingen kvittering lest ennå – sikt kameraet mot mottakerens skjerm';
   else if (ackAge < 2) ackTxt = `kvitteringer OK (${tx.ackReads} lest)`;
   else ackTxt = `siste kvittering for ${ackAge.toFixed(0)} s siden – sikt kameraet mot mottakeren`;
   $('player-status').textContent =
-    `${idLabel(tx.id)} · runde ${tx.round}: ${Math.min(tx.roundSent, tx.roundSize)}/${tx.roundSize} · mottatt ${tx.ackedCount}/${n} · ${tx.interval} ms · ${ackTxt}`;
+    `Runde ${tx.round}: ${Math.min(tx.roundSent, tx.roundSize)}/${tx.roundSize} · mottatt ${tx.ackedCount}/${n} · ${tx.interval} ms · ${ackTxt}`;
   $('send-progress').style.width = `${(100 * tx.ackedCount) / n}%`;
 }
 
@@ -383,18 +389,14 @@ function tick() {
 function onAckCodes(codes) {
   if (!tx.active) return;
   for (const b of codes) {
-    const a = parseAck(b);
-    if (!a) { tx.otherReads++; continue; }
-    if (a.id16 !== (tx.id & 0xffff)) { tx.foreignAck++; continue; }
+    const ids = parseAck(b);
+    if (!ids) { tx.otherReads++; continue; }
     tx.ackReads++;
     tx.lastAck = performance.now();
-    const n = tx.chunks.length;
-    const mark = (i) => { if (i < n && !tx.acked[i]) { tx.acked[i] = 1; tx.ackedCount++; } };
-    if (a.received) a.received.forEach(mark);
-    else {
-      // «Alt unntatt disse»: alt som ikke står i lista er mottatt.
-      const miss = new Set(a.missing);
-      for (let i = 0; i < n; i++) if (!miss.has(i)) mark(i);
+    const n = tx.chunks.length, now = performance.now();
+    // Bare numre denne overføringen faktisk har vist (gamle kvitteringer fra en tidligere overføring avvises).
+    for (const i of ids) {
+      if (i < n && !tx.acked[i] && tx.shownAt[i] && now - tx.shownAt[i] >= ACK_MIN_AGE_MS) { tx.acked[i] = 1; tx.ackedCount++; }
     }
     if (tx.ackedCount === n) { finishSend(); return; }
   }
@@ -414,15 +416,14 @@ async function startSend() {
     perPacket: Math.max(1, +opt.perPacket.value || 10),
     interval: Math.max(30, +opt.interval.value || 300),
     ecc: opt.ecc.value,
-    id: crypto.getRandomValues(new Uint32Array(1))[0] >>> 0,
   });
   try {
-    tx.chunks = makeChunks(buildStream(payloadBytes, { name: payloadName, type: payloadType }), chunkSize, tx.id);
+    tx.chunks = makeChunks(payloadBytes, { name: payloadName, type: payloadType }, chunkSize);
   } catch (e) { alert(e.message); return; }
   Object.assign(tx, {
-    qrCache: new Map(), acked: new Uint8Array(tx.chunks.length), ackedCount: 0, queue: [], round: 0,
+    qrCache: new Map(), acked: new Uint8Array(tx.chunks.length), shownAt: new Float64Array(tx.chunks.length), ackedCount: 0, queue: [], round: 0,
     roundSize: 0, roundSent: 0, current: [], lastAck: 0, t0: performance.now(), sentTotal: 0,
-    ackReads: 0, foreignAck: 0, otherReads: 0, camOk: false, waited: false, waiting: false,
+    ackReads: 0, otherReads: 0, camOk: false, waited: false, waiting: false,
     active: true, paused: false, done: false,
   });
   $('send-report').hidden = true;
@@ -493,34 +494,41 @@ document.addEventListener('keydown', (e) => {
 // =====================================================================
 // RECEIVER
 // =====================================================================
-let assembler = null, done = false, ackTimer = 0, ackSeg = 0, ackDirty = true, ackList = [], ackLabel = '';
-let pending = new Map(); // nye id-er som ennå ikke er kvittert ACK_REPEAT ganger -> antall ganger vist
-let statsT0 = performance.now(), lastResultUrl = null, resultBlob = null, resultName = '';
+let asm = new Assembler(), done = false, doneAt = 0;
+let pending = new Map();    // nye numre -> hvor mange ganger de er kvittert (vises først)
+let ackCursor = 0;          // rundgang over alle mottatte numre
+let ackTimer = 0, statsT0 = performance.now(), receiving = false;
+let lastResultUrl = null, resultBlob = null, resultName = '', ackPer = 10;
+const ac = $('ack-canvas');
+const actx = ac.getContext('2d', { alpha: false });
 const recvWorkers = Math.max(1, Math.min(3, (navigator.hardwareConcurrency || 2) - 1));
 const recvScanner = new Scanner($('video'), onDataCodes, { workers: recvWorkers });
 recvScanner.onError = (m) => setStatus(m);
 
 function setStatus(t) { $('recv-status').textContent = t; }
+window.qrsendDebug = () => ({ count: asm.count, received: asm.received, missing: asm.count ? [...Array(asm.count).keys()].filter((i) => !asm.parts.has(i)) : null });
+
+function resetAssembler() {
+  asm = new Assembler(); done = false; doneAt = 0; pending = new Map(); ackCursor = 0;
+  $('result').hidden = true;
+}
 
 function onDataCodes(codes) {
   let changed = false;
   for (const b of codes) {
     const c = parseChunk(b);
     if (!c) continue;
-    if (!assembler || assembler.id !== c.id) {
-      assembler = new Assembler(c.id, c.count);   // ny overføring (også etter en ferdig en)
-      done = false;
-      ackList = []; ackSeg = 0; pending = new Map();
-      $('result').hidden = true;
-      changed = true;
+    let r = asm.add(c);
+    if (r === 'conflict') {           // samme nr med annet innhold: ny overføring
+      resetAssembler();
+      if (!$('ack-player').hidden || receiving) showAckPlayer();
+      r = asm.add(c);
     }
-    if (done) continue;
-    if (assembler.add(c)) { changed = true; pending.set(c.index, 0); }
+    if (r === 'new') { changed = true; pending.set(c.index, 0); }
   }
   if (changed) {
-    ackDirty = true;
     drawChunkMap();
-    if (assembler.complete && !done) finishRecv();
+    if (asm.complete && !done) finishRecv();
   }
 }
 
@@ -531,144 +539,123 @@ function drawChunkMap() {
   const ctx = cm.getContext('2d');
   const css = getComputedStyle(document.documentElement);
   ctx.fillStyle = css.getPropertyValue('--missing'); ctx.fillRect(0, 0, cm.width, cm.height);
-  $('progress-bar').style.width = assembler ? `${(100 * assembler.received) / assembler.count}%` : '0';
-  if (!assembler) return;
-  const n = assembler.count, w = cm.width / n;
+  const n = asm.count || asm.maxIndex + 1;
+  $('progress-bar').style.width = asm.count ? `${(100 * asm.received) / asm.count}%` : '0';
+  if (!n) return;
+  const w = cm.width / n;
   ctx.fillStyle = css.getPropertyValue('--ok');
-  for (let i = 0; i < n; i++) if (assembler.parts[i]) ctx.fillRect(Math.floor(i * w), 0, Math.ceil(w), cm.height);
+  for (const i of asm.parts.keys()) ctx.fillRect(Math.floor(i * w), 0, Math.ceil(w), cm.height);
 }
 
-// Velger neste kvitterings-QR. Mangler det få biter, vises én «alt unntatt»-kode.
-// Ellers roteres bitkart-segmentene, og segmenter med ny informasjon vises først.
+// Ett kvitteringsbilde over hele skjermen: så få QR-koder som mulig (store ruter er lette å lese),
+// men opptil ackPer når mange nye numre venter. Hver kode har opptil 11 numre.
+// Nye numre først (hvert kvitteres ACK_REPEAT ganger), ledig plass fylles med alle mottatte numre etter tur.
 function ackTick() {
-  if (assembler) {
-    if (ackDirty) {
-      const { segments, list } = makeAcks(assembler);
-      if (list) ackList = [{ bytes: list, shown: 0, list: true, label: list.length > 4 ? `mangler id ${[...Array((list.length - 4) / 2)].map((_, k) => (list[4 + 2 * k] << 8) | list[5 + 2 * k]).join(', ')}` : 'ferdig' }];
-      else {
-        ackList = segments.map((b, k) => {
-          const old = ackList[k];
-          const same = old && old.bytes.length === b.length && old.bytes.every((v, j) => v === b[j]);
-          return { bytes: b, shown: same ? old.shown : 0, label: `kvittering ${k + 1}/${segments.length}` };
-        });
-      }
-      ackDirty = false;
+  if (receiving && asm.received) {
+    const nCodes = Math.max(1, Math.min(ackPer, Math.ceil(pending.size / ACK_IDS_PER_CODE)));
+    const cap = nCodes * ACK_IDS_PER_CODE;
+    const ids = [...pending.keys()].sort((x, y) => pending.get(x) - pending.get(y)).slice(0, cap);
+    for (const id of ids) {
+      const n = pending.get(id) + 1;
+      if (n >= ACK_REPEAT) pending.delete(id); else pending.set(id, n);
     }
-    if (done) pending.clear();
-    let a = null;
-    if (pending.size) {
-      // Kvitter nye id-er først. Mange nye i samme område -> bitkart-segmentet, ellers id-liste.
-      const per = ACK_SEGMENT_BYTES * 8, bySeg = new Map();
-      for (const id of pending.keys()) bySeg.set(Math.floor(id / per), (bySeg.get(Math.floor(id / per)) || 0) + 1);
-      let seg = -1, segN = 0;
-      for (const [k, n] of bySeg) if (n > segN) { seg = k; segN = n; }
-      let covered;
-      if (segN > ACK_MAX_MISSING && ackList[seg] && !ackList[seg].list) {
-        a = ackList[seg];
-        covered = [...pending.keys()].filter((id) => Math.floor(id / per) === seg);
-      } else {
-        covered = [...pending.keys()].sort((x, y) => pending.get(x) - pending.get(y)).slice(0, ACK_MAX_MISSING).sort((x, y) => x - y);
-        a = { bytes: makeReceivedAck(assembler.id, covered), label: `kvitterer id ${covered.join(', ')}` };
-      }
-      for (const id of covered) {
-        const n = pending.get(id) + 1;
-        if (n >= ACK_REPEAT) pending.delete(id); else pending.set(id, n);
-      }
-    } else {
-      let best = -1;
-      for (let j = 1; j <= ackList.length; j++) {
-        const k = (ackSeg + j) % ackList.length;
-        if (best < 0 || ackList[k].shown < ackList[best].shown) best = k;
-      }
-      ackSeg = best;
-      a = ackList[ackSeg];
+    const all = [...asm.parts.keys()];
+    const chosen = new Set(ids);
+    for (let k = 0; k < all.length && ids.length < cap; k++) {
+      const id = all[(ackCursor + k) % all.length];
+      if (!chosen.has(id)) { ids.push(id); chosen.add(id); }
     }
-    a.shown = (a.shown || 0) + 1;
-    drawAck(a.bytes);
-    ackLabel = a.label;
-    $('ack-hint').hidden = true;
-    $('ack-label').textContent = `${idLabel(assembler.id)} · ${assembler.received}/${assembler.count} · ${a.label}`;
+    ackCursor = (ackCursor + cap) % Math.max(1, all.length);
+    const qrs = [];
+    for (let k = 0; k < ids.length; k += ACK_IDS_PER_CODE) {
+      qrs.push(qrMatrixCanvas(makeAck(ids.slice(k, k + ACK_IDS_PER_CODE).sort((x, y) => x - y)), 'M'));
+    }
+    drawQrGrid(ac, actx, qrs, qrs.length);
+    if (done && performance.now() - doneAt > ACK_AFTER_DONE_MS) hideAckPlayer();
   }
   const now = performance.now();
-  if (now - statsT0 >= 1000 && recvScanner.on && !done) {
+  if (now - statsT0 >= 1000 && recvScanner.on) {
     const fps = recvScanner.frames / ((now - statsT0) / 1000);
     recvScanner.frames = 0; statsT0 = now;
     const v = $('video');
-    const prog = assembler ? `${assembler.received}/${assembler.count} biter` : 'ingen biter ennå';
-    setStatus(`${prog} · ${fps.toFixed(1)} bilder/s · ${v.videoWidth}×${v.videoHeight} · viser ${ackLabel}`);
+    const prog = asm.count ? `${asm.received}/${asm.count} biter` : asm.received ? `${asm.received} biter (antall kommer med bit 0)` : 'ingen biter ennå';
+    if (!done) setStatus(`${prog} · ${fps.toFixed(1)} bilder/s · ${v.videoWidth}×${v.videoHeight}`);
   }
 }
 
-function drawAck(bytes) {
-  const q = qrMatrixCanvas(bytes, 'M');
-  const c = $('ack-canvas');
-  const dpr = window.devicePixelRatio || 1;
-  const S = Math.round(c.clientWidth * dpr);
-  if (c.width !== S) { c.width = S; c.height = S; }
-  const ctx = c.getContext('2d', { alpha: false });
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, S, S);
-  const mod = Math.max(1, Math.floor(S / (q.width + 6)));
-  const size = mod * q.width, o = Math.round((S - size) / 2);
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(q, o, o, size, size);
+function showAckPlayer() {
+  $('ack-player').hidden = false;
+  fitCanvas(ac);
+  drawQrGrid(ac, actx, [], ackPer);
+  document.documentElement.requestFullscreen?.().catch(() => {});
 }
 
-async function startReceiver(deviceId) {
+function hideAckPlayer() {
+  $('ack-player').hidden = true;
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  stopReceiver();
+}
+
+async function startReceiver({ resume = false } = {}) {
+  if (done && !resume) { resetAssembler(); drawChunkMap(); }   // nytt mottak
+  ackPer = Math.max(1, Math.min(30, +$('opt-ackper').value || 10));
+  try { localStorage.setItem('qrsend2-ackper', ackPer); } catch {}
+  receiving = true;
+  showAckPlayer();
   try {
-    await recvScanner.start({ deviceId, res: $('opt-res').value });
+    await recvScanner.start({ deviceId: $('opt-camera').value || undefined, res: $('opt-res').value });
   } catch (e) {
+    receiving = false;
+    hideAckPlayer();
     setStatus('Fikk ikke tilgang til kameraet: ' + e.message);
     return;
   }
-  $('btn-camera').textContent = 'Stopp kamera';
   keepAwake(true);
   statsT0 = performance.now(); recvScanner.frames = 0;
-  setStatus('Venter på QR-koder … pek frontkameraet mot avsenderens skjerm.');
+  setStatus('Venter på QR-koder … hold frontkameraet mot avsenderens skjerm.');
   clearInterval(ackTimer);
   ackTimer = setInterval(ackTick, ACK_FRAME_MS);
   listCameras();
 }
 
-function stopReceiver({ keepAck = false } = {}) {
+function stopReceiver() {
+  receiving = false;
   recvScanner.stop();
-  $('btn-camera').textContent = 'Start kamera';
-  if (!keepAck) { clearInterval(ackTimer); ackTimer = 0; }
-  if (!tx.active && !keepAck) keepAwake(false);
+  clearInterval(ackTimer); ackTimer = 0;
+  if (!tx.active) keepAwake(false);
+  if (!done) setStatus(asm.received ? `Stoppet med ${asm.received}${asm.count ? '/' + asm.count : ''} biter.` : 'Kameraet er av');
 }
 
 async function listCameras() {
   try {
     const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
-    const sel = $('opt-camera'), cur = recvScanner.deviceId();
-    sel.innerHTML = '';
+    const sel = $('opt-camera'), cur = sel.value;
+    sel.innerHTML = '<option value="">Frontkamera (standard)</option>';
     devs.forEach((d, i) => {
       const o = document.createElement('option');
       o.value = d.deviceId; o.textContent = d.label || `Kamera ${i + 1}`;
-      if (d.deviceId === cur) o.selected = true;
       sel.appendChild(o);
     });
-    sel.hidden = devs.length < 2;
+    if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    $('camera-label').hidden = devs.length < 2;
   } catch {}
 }
 
-$('btn-camera').onclick = () => (recvScanner.on ? stopReceiver() : startReceiver($('opt-camera').value || undefined));
-$('opt-camera').onchange = () => recvScanner.on && startReceiver($('opt-camera').value);
-$('opt-res').onchange = () => recvScanner.on && startReceiver($('opt-camera').value || undefined);
+$('btn-recv-start').onclick = () => startReceiver();
+$('btn-show-acks').onclick = () => startReceiver({ resume: true });
+ac.onclick = () => { if (confirm('Stoppe mottaket?')) hideAckPlayer(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('ack-player').hidden) hideAckPlayer(); });
+window.addEventListener('resize', () => { if (!$('ack-player').hidden) fitCanvas(ac); drawChunkMap(); });
 $('btn-reset').onclick = () => {
-  assembler = null; done = false; ackList = []; ackDirty = true; pending = new Map();
-  $('ack-label').textContent = '';
-  $('result').hidden = true; $('ack-hint').hidden = false;
-  const c = $('ack-canvas'); c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  resetAssembler();
   drawChunkMap();
   setStatus(recvScanner.on ? 'Venter på QR-koder …' : 'Kameraet er av');
 };
 
 function finishRecv() {
   done = true;
-  ackDirty = true;
-  // Kameraet og kvitteringene fortsetter: avsenderen må se «ferdig», og en ny overføring
-  // (ny id) skal plukkes opp automatisk.
-  const { meta, file, ok } = assembler.assemble();
+  doneAt = performance.now();
+  const { meta, file, ok } = asm.assemble();
   resultName = meta.name || 'bilde';
   resultBlob = new Blob([file], { type: meta.type || 'application/octet-stream' });
   if (lastResultUrl) URL.revokeObjectURL(lastResultUrl);
@@ -677,11 +664,10 @@ function finishRecv() {
   $('btn-download').href = lastResultUrl;
   $('btn-download').download = resultName;
   $('result-info').textContent =
-    `${resultName} · ${fmtBytes(file.length)} · ${assembler.count} QR-koder · ` +
+    `${resultName} · ${fmtBytes(file.length)} · ${asm.count} QR-koder · ` +
     (ok ? 'kontrollsum OK ✔' : 'KONTROLLSUM FEILER – filen kan være skadet');
   $('result').hidden = false;
-  setStatus((ok ? 'Ferdig! ' : 'Ferdig, men kontrollsummen stemmer ikke. ') +
-    'Hold skjermen mot avsenderen til den viser at overføringen er ferdig.');
+  setStatus(ok ? `Ferdig! ${asm.count}/${asm.count} biter mottatt.` : 'Ferdig, men kontrollsummen stemmer ikke.');
   if (navigator.vibrate) navigator.vibrate(150);
 }
 
@@ -694,12 +680,12 @@ $('btn-share').onclick = async () => {
     $('btn-download').click();
   }
 };
-window.addEventListener('resize', drawChunkMap);
 
 // ---------------------------------------------------------------- init
 loadSettings();
 let startTab = 'send';
 try { startTab = new URLSearchParams(location.search).get('mode') || localStorage.getItem('qrsend2-tab') || 'send'; } catch {}
 showTab(startTab === 'recv' ? 'recv' : 'send');
+try { const v = localStorage.getItem('qrsend2-ackper'); if (v) $('opt-ackper').value = v; } catch {}
 drawChunkMap();
 if (!window.isSecureContext) setStatus('Obs: siden er ikke lastet over HTTPS – kameraet vil ikke virke her.');

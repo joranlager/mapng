@@ -100,29 +100,27 @@
 
   <!-- ===================== RECEIVE ===================== -->
   <main id="view-recv" class="view" hidden>
-    <section class="card recv-card">
-      <div class="row">
-        <button id="btn-camera" class="primary">Start kamera</button>
-        <select id="opt-camera" hidden></select>
-        <select id="opt-res">
-          <option value="1280x720">720p</option>
-          <option value="1920x1080" selected>1080p</option>
-          <option value="2560x1440">1440p</option>
-        </select>
-        <button id="btn-reset">Nullstill</button>
+    <section class="card">
+      <div class="grid">
+        <label id="camera-label" hidden>Kamera
+          <select id="opt-camera"><option value="">Frontkamera (standard)</option></select>
+        </label>
+        <label>Kameraoppløsning
+          <select id="opt-res">
+            <option value="1280x720">720p</option>
+            <option value="1920x1080" selected>1080p</option>
+            <option value="2560x1440">1440p</option>
+          </select>
+        </label>
+        <label>Maks kvitterings-QR per bilde
+          <input type="number" id="opt-ackper" value="10" min="1" max="30">
+        </label>
       </div>
-      <div class="ack-wrap">
-        <canvas id="ack-canvas"></canvas>
-        <div id="ack-label" class="mono"></div>
-        <div id="ack-hint">Kvitterings-QR vises her når de første bitene er mottatt.<br>Vend denne skjermen mot avsenderens kamera.</div>
-      </div>
+      <button id="btn-recv-start" class="primary wide">Start mottak</button>
       <div class="progress"><div id="progress-bar"></div></div>
       <p id="recv-status" class="mono">Kameraet er av</p>
       <canvas id="chunk-map" height="24"></canvas>
-      <div class="row preview-row">
-        <video id="video" class="mini" playsinline muted autoplay></video>
-        <span class="muted">Hva frontkameraet ser. Alle QR-kodene fra avsenderen må være med i bildet.</span>
-      </div>
+      <div class="row"><button id="btn-reset">Nullstill</button></div>
     </section>
 
     <section class="card" id="result" hidden>
@@ -132,9 +130,21 @@
       <div class="row">
         <button id="btn-share" class="primary">Del / Lagre i Bilder</button>
         <a id="btn-download" class="button" download>Last ned</a>
+        <button id="btn-show-acks">Vis kvitteringer igjen</button>
       </div>
     </section>
+
+    <section class="card help muted">
+      <p>Trykk <b>Start mottak</b> og vend skjermen mot avsenderen. Hele skjermen brukes til kvitterings-QR-koder, på samme måte som avsenderen. Frontkameraet leser avsenderens QR-koder, uten at kamerabildet vises. Hver kvitterings-QR inneholder numrene på bitene som er mottatt (opptil 11). Det vises så få og så store kvitterings-QR-er som mulig – som regel én over hele skjermen – og flere bare når mange nye biter venter på kvittering.</p>
+      <p>Når alt er mottatt, vises kvitteringene i 8 sekunder til, så avsenderen rekker å se dem. Så vises bildet. Trykk på skjermen (eller Esc) for å stoppe tidligere. Sender avsenderen fortsatt, trykk «Vis kvitteringer igjen».</p>
+    </section>
   </main>
+
+  <!-- Fullskjerm-kvitteringer: bare QR-koder -->
+  <div id="ack-player" hidden>
+    <canvas id="ack-canvas"></canvas>
+    <video id="video" class="hidden-cam" playsinline muted autoplay></video>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>
