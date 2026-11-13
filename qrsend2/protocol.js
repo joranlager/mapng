@@ -137,7 +137,9 @@ export class Assembler {
 //   2     2  transfer id (low 16 bits)
 //   type 0:  4  2  byte offset of segment
 //            6  .. bitmap: bit (i % 8) of byte (i >> 3) = chunk i received
-//   type 1:  4  .. u16 indices of the chunks still MISSING (empty = complete)
+//   type 1:  4  .. u16 ids (chunk indices) still MISSING (empty = complete)
+//   type 2:  4  .. u16 ids (chunk indices) just RECEIVED – sent right away so the
+//                 sender stops showing them as soon as possible
 
 export const ACK_MAGIC = 0xa2;
 export const ACK_MAX_BYTES = 26;                 // QR v2-M byte capacity
@@ -177,15 +179,22 @@ export function makeAcks(assembler) {
   return { segments, list };
 }
 
+// Kvittering for konkrete id-er (maks ACK_MAX_MISSING per kode).
+export function makeReceivedAck(transferId, ids) {
+  const a = ackHead(2, transferId, LIST_HDR + 2 * ids.length);
+  ids.forEach((m, k) => { a[LIST_HDR + 2 * k] = m >> 8; a[LIST_HDR + 2 * k + 1] = m & 0xff; });
+  return a;
+}
+
 // -> { id16, received: [indices] } | { id16, missing: [indices] } | null
 export function parseAck(b) {
   if (!b || b.length < LIST_HDR || b[0] !== ACK_MAGIC) return null;
   const id16 = (b[2] << 8) | b[3];
-  if (b[1] === 1) {
+  if (b[1] === 1 || b[1] === 2) {
     if ((b.length - LIST_HDR) & 1) return null;
-    const missing = [];
-    for (let k = LIST_HDR; k < b.length; k += 2) missing.push((b[k] << 8) | b[k + 1]);
-    return { id16, missing };
+    const ids = [];
+    for (let k = LIST_HDR; k < b.length; k += 2) ids.push((b[k] << 8) | b[k + 1]);
+    return b[1] === 1 ? { id16, missing: ids } : { id16, received: ids };
   }
   if (b[1] !== 0 || b.length < BITMAP_HDR) return null;
   const off = (b[4] << 8) | b[5];

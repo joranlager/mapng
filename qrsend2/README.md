@@ -3,10 +3,13 @@
 Som `../qrsend`, men begge enhetene bruker **frontkameraet** og holdes skjerm mot skjerm:
 
 - **Avsender** viser pakker med 10 data-QR-koder og leser samtidig mottakerens skjerm med frontkameraet.
-- **Mottaker** leser data-QR-kodene og viser **kvitterings-QR-koder**: et bitkart over hvilke biter
-  (QR-koder) som er mottatt (80 byte = 640 biter per kvitterings-QR; flere kvitteringer vises etter tur).
-- Avsenderen hopper over alt som er kvittert. Hver ny runde inneholder bare bitene som ennå ikke er
-  kvittert, blandet i ny rekkefølge. Når mottakeren melder «ferdig», stopper avsenderen.
+- Hver data-QR har en **id** (bitnummeret i headeren, også skrevet under koden på skjermen).
+- **Mottaker** leser data-QR-kodene og viser små **kvitterings-QR-koder** (QR versjon 2, 25×25 ruter):
+  - nye id-er kvitteres straks som en liste («kvitterer id 30, 31, …», inntil 11 per kode, hver vist 2 ganger),
+  - mange nye på én gang kvitteres med bitkart-segmentet de ligger i (160 id-er per kode),
+  - mangler det 11 eller færre: én kode med «alt unntatt id …»; tom liste = ferdig.
+- **Avsender** sender aldri en id som er kvittert: kvitterte id-er fjernes fra skjermen med en gang,
+  og hver ny runde inneholder bare ukvitterte id-er. Før en ny runde venter den 1 s på siste kvitteringer.
 - Leser avsenderen ingen kvitteringer, sender den bare alt i løkke som versjon 1.
 
 Kvitteringsformat: se `protocol.js` (`makeAcks` / `parseAck`).
