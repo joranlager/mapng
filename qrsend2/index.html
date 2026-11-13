@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#111418">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>QR-overføring 2</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>QR-overføring <small>2 · toveis</small></h1>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-send" aria-selected="true">Send</button>
+      <button role="tab" id="tab-recv" aria-selected="false">Motta</button>
+    </nav>
+  </header>
+
+  <!-- ===================== SEND ===================== -->
+  <main id="view-send" class="view">
+    <section class="card">
+      <label class="file-pick">
+        <input type="file" id="file" accept="image/*">
+        <span id="file-label">Velg et bilde …</span>
+      </label>
+      <div id="preview-wrap" hidden>
+        <img id="preview" alt="Forhåndsvisning">
+        <p id="file-info" class="muted"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Innstillinger</h2>
+      <div class="grid">
+        <label>Bildeformat
+          <select id="opt-format">
+            <option value="image/jpeg">JPEG (komprimert)</option>
+            <option value="image/webp">WebP (komprimert)</option>
+            <option value="original">Original fil (ingen endring)</option>
+          </select>
+        </label>
+        <label>Maks bredde/høyde (px)
+          <input type="number" id="opt-maxside" value="1600" min="64" max="8192" step="64">
+        </label>
+        <label>Kvalitet <output id="out-quality">0.75</output>
+          <input type="range" id="opt-quality" min="0.3" max="0.95" step="0.05" value="0.75">
+        </label>
+        <label>QR-koder per pakke
+          <input type="number" id="opt-perpacket" value="10" min="1" max="30">
+        </label>
+        <label>Byte per QR-kode
+          <input type="number" id="opt-chunk" value="400" min="100" max="1800" step="50">
+        </label>
+        <label>Tid per pakke (ms)
+          <input type="number" id="opt-interval" value="300" min="60" max="5000" step="20">
+        </label>
+        <label>Feilretting
+          <select id="opt-ecc">
+            <option value="L">L (mest data)</option>
+            <option value="M" selected>M (anbefalt)</option>
+            <option value="Q">Q (robust)</option>
+          </select>
+        </label>
+        <label>Kamera (leser kvitteringer)
+          <select id="opt-send-res">
+            <option value="1280x720" selected>720p</option>
+            <option value="1920x1080">1080p</option>
+          </select>
+        </label>
+      </div>
+      <p id="estimate" class="muted"></p>
+      <button id="btn-start" class="primary" disabled>Start overføring</button>
+    </section>
+
+    <section class="card help muted">
+      <p>Begge enhetene bruker <b>frontkameraet</b>. Hold skjermene mot hverandre (30–60 cm), slik at hvert kamera ser den andre skjermen. Mottakeren viser kvitterings-QR-koder som forteller avsenderen hvilke biter som har kommet fram. Neste runde sender bare det som mangler. Hvis avsenderen ikke klarer å lese kvitteringene, sender den bare alt på nytt i løkke, som i versjon 1.</p>
+    </section>
+  </main>
+
+  <!-- Fullscreen sender -->
+  <div id="player" hidden>
+    <canvas id="player-canvas"></canvas>
+    <div id="player-bar">
+      <video id="send-video" class="mini" playsinline muted autoplay></video>
+      <div class="bar-text">
+        <div id="player-status"></div>
+        <div class="minibar"><div id="send-progress"></div></div>
+      </div>
+      <button id="btn-slower" title="Saktere">−</button>
+      <button id="btn-faster" title="Raskere">+</button>
+      <button id="btn-pause">Pause</button>
+      <button id="btn-stop">Stopp</button>
+    </div>
+    <div id="player-done" hidden>
+      <div>
+        <p class="big">✔ Mottakeren har fått alt</p>
+        <p id="done-info"></p>
+        <button id="btn-done-close" class="primary">Lukk</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== RECEIVE ===================== -->
+  <main id="view-recv" class="view" hidden>
+    <section class="card recv-card">
+      <div class="row">
+        <button id="btn-camera" class="primary">Start kamera</button>
+        <select id="opt-camera" hidden></select>
+        <select id="opt-res">
+          <option value="1280x720">720p</option>
+          <option value="1920x1080" selected>1080p</option>
+          <option value="2560x1440">1440p</option>
+        </select>
+        <button id="btn-reset">Nullstill</button>
+      </div>
+      <div class="ack-wrap">
+        <canvas id="ack-canvas"></canvas>
+        <div id="ack-hint">Kvitterings-QR vises her når de første bitene er mottatt.<br>Vend denne skjermen mot avsenderens kamera.</div>
+      </div>
+      <div class="progress"><div id="progress-bar"></div></div>
+      <p id="recv-status" class="mono">Kameraet er av</p>
+      <canvas id="chunk-map" height="24"></canvas>
+      <div class="row preview-row">
+        <video id="video" class="mini" playsinline muted autoplay></video>
+        <span class="muted">Hva frontkameraet ser. Alle QR-kodene fra avsenderen må være med i bildet.</span>
+      </div>
+    </section>
+
+    <section class="card" id="result" hidden>
+      <h2>Mottatt</h2>
+      <img id="result-img" alt="Mottatt bilde">
+      <p id="result-info" class="muted"></p>
+      <div class="row">
+        <button id="btn-share" class="primary">Del / Lagre i Bilder</button>
+        <a id="btn-download" class="button" download>Last ned</a>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

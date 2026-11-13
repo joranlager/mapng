@@ -2,7 +2,7 @@ name: Deploy QR-overføring to GitHub Pages
 
 on:
   push:
-    paths: ['qrsend/**', '.github/workflows/qrsend-pages.yml']
+    paths: ['qrsend/**', 'qrsend2/**', '.github/workflows/qrsend-pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -23,8 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Assemble site (v1 at /, v2 at /v2/)
+        run: |
+          mkdir _site
+          cp -r qrsend/. _site/
+          cp -r qrsend2 _site/v2
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: qrsend
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
