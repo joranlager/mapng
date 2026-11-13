@@ -331,13 +331,10 @@ function drawPacket() {
   const W = pc.width, H = pc.height - Math.round($('player-bar').offsetHeight * dpr);
   pctx.fillStyle = '#fff';
   pctx.fillRect(0, 0, W, pc.height);
-  const fs = Math.round(12 * dpr), labelH = fs + 4 * dpr;   // linje under hver kode med id-en
-  const g = bestGrid(tx.perPacket, W, H, labelH);
-  const rowH = g.cell + labelH;
+  const g = bestGrid(tx.perPacket, W, H);
+  const rowH = g.cell;
   const offX = (W - g.cols * g.cell) / 2, offY = (H - g.rows * rowH) / 2;
   pctx.imageSmoothingEnabled = false;
-  pctx.fillStyle = '#9aa0a6'; pctx.font = `${fs}px ui-monospace, Menlo, Consolas, monospace`;
-  pctx.textAlign = 'center';
   tx.current.forEach((ci, k) => {
     const q = qrFor(ci);
     const mod = Math.max(1, Math.floor(g.cell / (q.width + 6)));
@@ -345,7 +342,6 @@ function drawPacket() {
     const x = Math.round(offX + (k % g.cols) * g.cell + (g.cell - size) / 2);
     const y = Math.round(offY + Math.floor(k / g.cols) * rowH + (g.cell - size) / 2);
     pctx.drawImage(q, x, y, size, size);
-    pctx.fillText(`id ${ci}`, x + size / 2, offY + Math.floor(k / g.cols) * rowH + g.cell + fs);
   });
   if (tx.waiting) {
     pctx.fillStyle = '#5d6673'; pctx.font = `${Math.round(18 * dpr)}px -apple-system, sans-serif`;
