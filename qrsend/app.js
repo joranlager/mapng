@@ -328,6 +328,7 @@ function onCode(bytes) {
     // A new transfer started: switch to it.
     assembler = new Assembler(c.id, c.count);
     done = false;
+    tStart = performance.now(); tEnd = 0;   // overføringstid regnes fra første mottatte bit
     $('result').hidden = true;
   }
   if (done) return;
@@ -338,6 +339,20 @@ function onCode(bytes) {
 }
 
 function setStatus(t) { $('recv-status').textContent = t; }
+
+// Overføringstid og prosent overført
+let tStart = 0, tEnd = 0;
+const fmtClock = (ms) => {
+  const t = Math.max(0, ms) / 1000, m = Math.floor(t / 60), sec = t - m * 60;
+  return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
+};
+function updateProgressText() {
+  const pct = assembler ? (100 * assembler.received) / assembler.count : 0;
+  $('recv-pct').textContent = `${pct < 100 && pct > 99 ? 99 : Math.floor(pct)} %`;
+  $('recv-time').textContent = fmtClock(tStart ? (tEnd || performance.now()) - tStart : 0);
+  $('recv-time-label').textContent = tEnd ? 'overføringstid (ferdig)' : 'overføringstid';
+}
+setInterval(updateProgressText, 100);
 
 function drawChunkMap() {
   const cm = $('chunk-map');
@@ -448,7 +463,8 @@ $('btn-camera').onclick = () => (cameraOn ? stopCamera() : startCamera($('opt-ca
 $('opt-camera').onchange = () => cameraOn && startCamera($('opt-camera').value);
 $('opt-res').onchange = () => cameraOn && startCamera($('opt-camera').value || undefined);
 $('btn-reset').onclick = () => {
-  assembler = null; done = false; codesSeen = 0;
+  assembler = null; done = false; codesSeen = 0; tStart = 0; tEnd = 0;
+  updateProgressText();
   $('result').hidden = true; $('progress-bar').style.width = '0';
   drawChunkMap();
   setStatus('Venter på QR-koder …');
@@ -456,6 +472,8 @@ $('btn-reset').onclick = () => {
 
 function finish() {
   done = true;
+  tEnd = performance.now();
+  updateProgressText();
   const { meta, file, ok } = assembler.assemble();
   resultName = meta.name || 'bilde';
   resultBlob = new Blob([file], { type: meta.type || 'application/octet-stream' });
@@ -466,6 +484,7 @@ function finish() {
   $('btn-download').download = resultName;
   $('result-info').textContent =
     `${resultName} · ${fmtBytes(file.length)} · ${assembler.count} QR-koder · ` +
+    `overført på ${fmtClock(tEnd - tStart)} (${fmtBytes(Math.round(file.length / Math.max(0.001, (tEnd - tStart) / 1000)))}/s) · ` +
     (ok ? 'kontrollsum OK ✔' : 'KONTROLLSUM FEILER – filen kan være skadet');
   $('result').hidden = false;
   setStatus(ok ? `Ferdig! ${assembler.count}/${assembler.count} biter mottatt.` : 'Ferdig, men kontrollsummen stemmer ikke.');

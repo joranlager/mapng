@@ -83,3 +83,8 @@ button:disabled { opacity: .5; cursor: default; }
 #progress-bar { height: 100%; width: 0; background: var(--ok); transition: width .2s; }
 #chunk-map { width: 100%; height: 40px; display: block; border-radius: 4px; }
 #result-img { display: block; max-width: 100%; margin: 0 auto 8px; border-radius: 8px; }
+.recv-big { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.recv-big > div { display: flex; flex-direction: column; }
+.recv-big > div:last-child { align-items: flex-end; }
+.recv-big span { font: 600 32px/1.1 ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.recv-big small { color: var(--muted); font-size: 13px; }
