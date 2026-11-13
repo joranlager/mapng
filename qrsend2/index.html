@@ -136,15 +136,22 @@
 
     <section class="card help muted">
       <p>Trykk <b>Start mottak</b> og vend skjermen mot avsenderen. Hele skjermen brukes til kvitterings-QR-koder, på samme måte som avsenderen. Frontkameraet leser avsenderens QR-koder, uten at kamerabildet vises. Hver kvitterings-QR inneholder numrene på bitene som er mottatt (opptil 11). Det vises så få og så store kvitterings-QR-er som mulig – som regel én over hele skjermen – og flere bare når mange nye biter venter på kvittering.</p>
-      <p>Når alt er mottatt, vises kvitteringene i 8 sekunder til, så avsenderen rekker å se dem. Så vises bildet. Trykk på skjermen (eller Esc) for å stoppe tidligere. Sender avsenderen fortsatt, trykk «Vis kvitteringer igjen».</p>
+      <p>Når alt er mottatt, vises kvitteringene i 8 sekunder til, så avsenderen rekker å se dem. Så vises bildet. Nederst på skjermen står det hele tiden status: hvor mange biter som er mottatt, hvor mange bilder kameraet analyserer, og eventuelle feil. Trykk på skjermen (eller Esc) for å stoppe tidligere. Sender avsenderen fortsatt, trykk «Vis kvitteringer igjen».</p>
     </section>
   </main>
 
   <!-- Fullskjerm-kvitteringer: bare QR-koder -->
   <div id="ack-player" hidden>
-    <video id="video" class="under-cam" playsinline muted autoplay></video>
-    <canvas id="ack-canvas" class="invisible"></canvas>
-    <div id="ack-hint">Sikt frontkameraet mot avsenderens skjerm.<br>Skjermen bytter til kvitterings-QR når første bit er lest.<br><small id="ack-hint-status"></small></div>
+    <div class="ack-stage">
+      <video id="video" class="under-cam" playsinline muted autoplay></video>
+      <canvas id="ack-canvas" class="invisible"></canvas>
+    </div>
+    <!-- Statusfelt: alltid synlig nederst, utenfor QR-området -->
+    <div id="ack-status">
+      <div id="ack-msg">Starter …</div>
+      <div class="ack-progress"><div id="ack-progress-bar"></div></div>
+      <div id="ack-hint-status"></div>
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>
