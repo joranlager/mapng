@@ -17,7 +17,7 @@ const OPTIONS = {
   formats: ['QRCode'],
   tryHarder: true,
   tryRotate: true,
-  tryInvert: false,
+  tryInvert: true,
   tryDownscale: true,
   maxNumberOfSymbols: 64,
 };

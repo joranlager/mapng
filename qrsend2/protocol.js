@@ -127,60 +127,73 @@ export class Assembler {
 }
 
 // ---------------------------------------------------------------------------
-// Acknowledgements (receiver -> sender), shown as QR codes on the receiver's
-// screen and read by the sender's front camera.
+// Acknowledgements (receiver -> sender), shown as small QR codes on the
+// receiver's screen and read by the sender's (often poor) front camera.
+// Kept tiny (<= ACK_MAX_BYTES, QR version 2 = 25x25 modules) so the modules
+// are large enough to be read from a distance.
 //
-//   offset size field
-//   0      1    magic 0x41 ('A')
-//   1      1    version (1)
-//   2      4    transfer id
-//   6      2    chunk count
-//   8      2    byte offset of this bitmap segment
-//   10     1    flags: bit0 = transfer complete
-//   11     ...  bitmap segment: bit (i % 8) of byte (i >> 3) = chunk i received
-//
-// The bitmap is idempotent, so the sender just ORs every segment it reads.
+//   0     1  magic/version 0xA2
+//   1     1  type: 0 = bitmap segment, 1 = "everything except" list
+//   2     2  transfer id (low 16 bits)
+//   type 0:  4  2  byte offset of segment
+//            6  .. bitmap: bit (i % 8) of byte (i >> 3) = chunk i received
+//   type 1:  4  .. u16 indices of the chunks still MISSING (empty = complete)
 
-export const ACK_MAGIC = 0x41;
-export const ACK_HEADER = 11;
+export const ACK_MAGIC = 0xa2;
+export const ACK_MAX_BYTES = 26;                 // QR v2-M byte capacity
+const BITMAP_HDR = 6, LIST_HDR = 4;
+export const ACK_SEGMENT_BYTES = ACK_MAX_BYTES - BITMAP_HDR;   // 20 bytes = 160 chunks
+export const ACK_MAX_MISSING = (ACK_MAX_BYTES - LIST_HDR) >> 1; // 11
 
-export function makeAcks(assembler, segmentBytes, complete) {
-  const total = Math.ceil(assembler.count / 8);
-  const bitmap = new Uint8Array(total);
-  for (let i = 0; i < assembler.count; i++) if (assembler.parts[i]) bitmap[i >> 3] |= 1 << (i & 7);
-  const acks = [];
-  for (let off = 0; off < total; off += segmentBytes) {
-    const seg = bitmap.subarray(off, Math.min(total, off + segmentBytes));
-    const a = new Uint8Array(ACK_HEADER + seg.length);
-    const id = assembler.id;
-    a[0] = ACK_MAGIC; a[1] = VERSION;
-    a[2] = (id >>> 24) & 0xff; a[3] = (id >>> 16) & 0xff; a[4] = (id >>> 8) & 0xff; a[5] = id & 0xff;
-    a[6] = assembler.count >> 8; a[7] = assembler.count & 0xff;
-    a[8] = off >> 8; a[9] = off & 0xff;
-    a[10] = complete ? 1 : 0;
-    a.set(seg, ACK_HEADER);
-    acks.push(a);
-  }
-  return acks;
+function ackHead(type, id, len) {
+  const a = new Uint8Array(len);
+  a[0] = ACK_MAGIC; a[1] = type; a[2] = (id >>> 8) & 0xff; a[3] = id & 0xff;
+  return a;
 }
 
-// Returns { id, count, complete, indices: [received chunk indices in this segment] } or null.
+// Returns { segments: [Uint8Array per bitmap segment], list: Uint8Array | null }.
+// `list` is set when few enough chunks are missing to name them all in one code.
+export function makeAcks(assembler) {
+  const total = Math.ceil(assembler.count / 8);
+  const bitmap = new Uint8Array(total);
+  const missing = [];
+  for (let i = 0; i < assembler.count; i++) {
+    if (assembler.parts[i]) bitmap[i >> 3] |= 1 << (i & 7);
+    else missing.push(i);
+  }
+  const segments = [];
+  for (let off = 0; off < total; off += ACK_SEGMENT_BYTES) {
+    const seg = bitmap.subarray(off, Math.min(total, off + ACK_SEGMENT_BYTES));
+    const a = ackHead(0, assembler.id, BITMAP_HDR + seg.length);
+    a[4] = off >> 8; a[5] = off & 0xff;
+    a.set(seg, BITMAP_HDR);
+    segments.push(a);
+  }
+  let list = null;
+  if (missing.length <= ACK_MAX_MISSING) {
+    list = ackHead(1, assembler.id, LIST_HDR + 2 * missing.length);
+    missing.forEach((m, k) => { list[LIST_HDR + 2 * k] = m >> 8; list[LIST_HDR + 2 * k + 1] = m & 0xff; });
+  }
+  return { segments, list };
+}
+
+// -> { id16, received: [indices] } | { id16, missing: [indices] } | null
 export function parseAck(b) {
-  if (!b || b.length < ACK_HEADER || b[0] !== ACK_MAGIC || b[1] !== VERSION) return null;
-  const id = ((b[2] << 24) | (b[3] << 16) | (b[4] << 8) | b[5]) >>> 0;
-  const count = (b[6] << 8) | b[7];
-  const off = (b[8] << 8) | b[9];
-  const complete = (b[10] & 1) === 1;
-  const indices = [];
-  for (let k = ACK_HEADER; k < b.length; k++) {
+  if (!b || b.length < LIST_HDR || b[0] !== ACK_MAGIC) return null;
+  const id16 = (b[2] << 8) | b[3];
+  if (b[1] === 1) {
+    if ((b.length - LIST_HDR) & 1) return null;
+    const missing = [];
+    for (let k = LIST_HDR; k < b.length; k += 2) missing.push((b[k] << 8) | b[k + 1]);
+    return { id16, missing };
+  }
+  if (b[1] !== 0 || b.length < BITMAP_HDR) return null;
+  const off = (b[4] << 8) | b[5];
+  const received = [];
+  for (let k = BITMAP_HDR; k < b.length; k++) {
     const byte = b[k];
     if (!byte) continue;
-    for (let bit = 0; bit < 8; bit++) {
-      if (byte & (1 << bit)) {
-        const i = (off + k - ACK_HEADER) * 8 + bit;
-        if (i < count) indices.push(i);
-      }
-    }
+    for (let bit = 0; bit < 8; bit++) if (byte & (1 << bit)) received.push((off + k - BITMAP_HDR) * 8 + bit);
   }
-  return { id, count, complete, indices };
+  return { id16, received };
 }

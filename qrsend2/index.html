@@ -69,8 +69,8 @@
         </label>
         <label>Kamera (leser kvitteringer)
           <select id="opt-send-res">
-            <option value="1280x720" selected>720p</option>
-            <option value="1920x1080">1080p</option>
+            <option value="1280x720">720p</option>
+            <option value="1920x1080" selected>1080p (anbefalt)</option>
           </select>
         </label>
       </div>
@@ -79,7 +79,7 @@
     </section>
 
     <section class="card help muted">
-      <p>Begge enhetene bruker <b>frontkameraet</b>. Hold skjermene mot hverandre (30–60 cm), slik at hvert kamera ser den andre skjermen. Mottakeren viser kvitterings-QR-koder som forteller avsenderen hvilke biter som har kommet fram. Neste runde sender bare det som mangler. Hvis avsenderen ikke klarer å lese kvitteringene, sender den bare alt på nytt i løkke, som i versjon 1.</p>
+      <p>Begge enhetene bruker <b>frontkameraet</b>. Hold skjermene mot hverandre (30–60 cm), slik at hvert kamera ser den andre skjermen. Kvitterings-QR-en på mottakeren er bevisst stor og enkel; hold den gjerne nærmere avsenderens kamera enn selve avstanden mellom skjermene. Kamerabildet nederst på avsenderen får grønn ramme når kvitteringer leses, rød når ikke. Mottakeren viser kvitterings-QR-koder som forteller avsenderen hvilke biter som har kommet fram. Neste runde sender bare det som mangler. Hvis avsenderen ikke klarer å lese kvitteringene, sender den bare alt på nytt i løkke, som i versjon 1.</p>
     </section>
   </main>
 
@@ -121,6 +121,7 @@
       </div>
       <div class="ack-wrap">
         <canvas id="ack-canvas"></canvas>
+        <div id="ack-label" class="mono"></div>
         <div id="ack-hint">Kvitterings-QR vises her når de første bitene er mottatt.<br>Vend denne skjermen mot avsenderens kamera.</div>
       </div>
       <div class="progress"><div id="progress-bar"></div></div>
