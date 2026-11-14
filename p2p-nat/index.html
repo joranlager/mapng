@@ -170,7 +170,7 @@
                             <i class="fa-solid fa-plug-circle-xmark text-[10px]"></i> 0 Internett-tjenester
                         </span>
                     </div>
-                    <p class="text-[11px] text-slate-400 hidden md:block truncate">Direkte PC-til-PC gjennom to brannmurer uten STUN, skyservere eller portåpning</p>
+                    <p class="text-[11px] text-slate-400 hidden md:block truncate">Direkte OneGiver ↔ OneReceiver gjennom to brannmurer uten STUN eller skyservere</p>
                 </div>
             </div>
 
@@ -187,6 +187,12 @@
                 <button id="mode-btn-sim" onclick="switchAppMode('sim')" class="px-2.5 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white">
                     <i class="fa-solid fa-cubes text-emerald-400"></i>
                     <span>3D Lab & Simulator</span>
+                </button>
+                <button id="mode-btn-onechat" onclick="openOneChatTab()" class="px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 text-amber-300 hover:text-yellow-200 relative">
+                    <i id="onechat-top-lock-icon" class="fa-solid fa-lock text-[10px] text-rose-400"></i>
+                    <i class="fa-solid fa-ghost text-yellow-400"></i>
+                    <span>OneChat</span>
+                    <span id="onechat-unread-pill" class="hidden w-2 h-2 rounded-full bg-yellow-400 animate-ping"></span>
                 </button>
             </div>
 
@@ -304,17 +310,17 @@
                 <div class="grid grid-cols-2 gap-2">
                     <button id="role-btn-a" onclick="selectRole('A')" class="min-h-[48px] p-2.5 rounded-lg border border-cyan-500/60 bg-cyan-950/50 text-left transition-all">
                         <div class="flex items-center justify-between">
-                            <span class="font-bold text-cyan-300"><i class="fa-solid fa-desktop mr-1"></i> PC A (Initiator)</span>
+                            <span class="font-bold text-cyan-300"><i class="fa-solid fa-paper-plane mr-1"></i> OneGiver</span>
                             <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
                         </div>
-                        <p class="text-[10px] text-slate-400 mt-0.5">Lager SDP Offer / Starter</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Initiator • Lager SDP Offer</p>
                     </button>
                     <button id="role-btn-b" onclick="selectRole('B')" class="min-h-[48px] p-2.5 rounded-lg border border-slate-700/80 bg-slate-900/60 text-left transition-all hover:border-slate-600">
                         <div class="flex items-center justify-between">
-                            <span class="font-bold text-slate-300"><i class="fa-solid fa-laptop-code mr-1"></i> PC B (Responder)</span>
+                            <span class="font-bold text-slate-300"><i class="fa-solid fa-satellite-dish mr-1"></i> OneReceiver</span>
                             <span class="w-2 h-2 rounded-full bg-slate-600"></span>
                         </div>
-                        <p class="text-[10px] text-slate-400 mt-0.5">Lager SDP Answer</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Responder • Lager SDP Answer</p>
                     </button>
                 </div>
             </div>
@@ -353,10 +359,10 @@
                     </div>
                 </div>
 
-                <!-- Step 1: Generate Offer (PC A) or Copy Answer (PC B) -->
+                <!-- Step 1: Generate Offer (OneGiver) or Copy Answer (OneReceiver) -->
                 <div id="webrtc-step-1" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
                     <div class="flex items-center justify-between gap-2">
-                        <span id="step1-title" class="font-semibold text-white">Steg 1 (PC A): Generer Tilkoblingspakke</span>
+                        <span id="step1-title" class="font-semibold text-white">Steg 1 (OneGiver): Generer Tilkoblingspakke</span>
                         <button onclick="generateWebRTCOffer()" id="btn-gen-offer" class="min-h-[40px] px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-semibold transition flex items-center gap-1.5 shadow shrink-0">
                             <i class="fa-solid fa-bolt"></i> Lag SDP Offer
                         </button>
@@ -580,7 +586,7 @@
                     </div>
                     <div id="chat-messages" class="flex-1 p-2.5 overflow-y-auto space-y-2 font-sans text-xs">
                         <div class="text-[11px] text-slate-500 text-center py-4">
-                            Slå hull i brannmurene for å sende meldinger og filer direkte mellom PC A og PC B.
+                            Slå hull i brannmurene for å sende meldinger og filer direkte mellom OneGiver og OneReceiver.
                         </div>
                     </div>
                     <form onsubmit="handleChatSubmit(event)" class="p-1.5 bg-slate-900 border-t border-slate-800 flex gap-1.5">
@@ -669,25 +675,230 @@
 
     <!-- ================= MOBILE BOTTOM NAVIGATION BAR (<1024px) ================= -->
     <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 hud-glass border-b-0 border-x-0 safe-bottom">
-        <div class="grid grid-cols-4 h-16 px-1">
+        <div class="grid grid-cols-5 h-16 px-0.5">
             <button id="m-nav-3d" onclick="switchMobileTab('3d')" class="flex flex-col items-center justify-center gap-1 text-cyan-400 font-semibold transition">
                 <i class="fa-solid fa-cubes text-base"></i>
                 <span class="text-[10px]">3D Scener</span>
             </button>
             <button id="m-nav-connect" onclick="switchMobileTab('connect')" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium transition">
                 <i class="fa-solid fa-satellite-dish text-base"></i>
-                <span class="text-[10px]">Koble til (P2P)</span>
+                <span class="text-[10px]">Koble til</span>
+            </button>
+            <button id="m-nav-onechat" onclick="openOneChatTab()" class="flex flex-col items-center justify-center gap-1 text-yellow-400 font-bold transition relative">
+                <div class="relative">
+                    <i class="fa-solid fa-ghost text-base"></i>
+                    <i id="m-onechat-lock" class="fa-solid fa-lock text-[8px] text-rose-400 absolute -top-1 -right-2.5"></i>
+                </div>
+                <span class="text-[10px]">OneChat</span>
             </button>
             <button id="m-nav-chat" onclick="switchMobileTab('chat')" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium transition relative">
-                <i class="fa-solid fa-comments text-base"></i>
-                <span class="text-[10px]">Chat & Filer</span>
+                <i class="fa-solid fa-file-shield text-base"></i>
+                <span class="text-[10px]">Rå Filer</span>
             </button>
             <button id="m-nav-log" onclick="switchMobileTab('log')" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium transition">
                 <i class="fa-solid fa-terminal text-base"></i>
-                <span class="text-[10px]">NAT & Logg</span>
+                <span class="text-[10px]">NAT Logg</span>
             </button>
         </div>
     </nav>
+
+    <!-- ================= DEDICATED ONECHAT SNAPCHAT-STYLE OVERLAY TAB ================= -->
+    <section id="onechat-overlay" class="hidden fixed inset-x-0 top-14 bottom-16 lg:bottom-3 z-30 flex items-center justify-center p-0 sm:p-3 pointer-events-none">
+        <div class="w-full max-w-5xl h-full bg-[#0b0e17]/95 backdrop-blur-2xl sm:rounded-3xl border border-yellow-400/30 shadow-2xl overflow-hidden flex flex-col pointer-events-auto relative">
+
+            <!-- LOCKED GATE OVERLAY (Shown if P2P tunnel between OneGiver and OneReceiver is not active yet) -->
+            <div id="onechat-locked-gate" class="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
+                <div class="w-20 h-20 rounded-3xl bg-yellow-400/15 border-2 border-yellow-400/50 flex items-center justify-center text-yellow-400 text-4xl mb-4 shadow-lg shadow-yellow-500/10 animate-bounce">
+                    <i class="fa-solid fa-ghost"></i>
+                </div>
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-950/90 border border-rose-500/40 text-rose-300 text-xs font-mono mb-2">
+                    <i class="fa-solid fa-lock"></i> Krever Aktiv P2P-Forbindelse
+                </div>
+                <h2 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">OneChat er låst inntil hull er slått</h2>
+                <p class="text-xs sm:text-sm text-slate-400 max-w-md mt-2 leading-relaxed">
+                    Koble sammen <strong class="text-cyan-300">OneGiver</strong> og <strong class="text-emerald-300">OneReceiver</strong> gjennom brannmurene først for å låse opp direkte Snapchat-chat, Bilde-Snaps og P2P Videosamtale.
+                </p>
+                <div class="flex flex-wrap items-center justify-center gap-3 mt-6">
+                    <button onclick="quickConnectForOneChat()" class="min-h-[46px] px-5 py-2.5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-yellow-400/20 transition transform active:scale-95">
+                        <i class="fa-solid fa-bolt"></i> Slå Hull & Koble OneGiver ↔ OneReceiver Nå
+                    </button>
+                    <button onclick="closeOneChatTab()" class="min-h-[46px] px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm transition">
+                        Tilbake til 3D-Nettverk
+                    </button>
+                </div>
+            </div>
+
+            <!-- ONECHAT TOP HEADER (Snapchat Style) -->
+            <div class="px-4 py-3 bg-slate-900/95 border-b border-slate-800/90 flex items-center justify-between gap-2 shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <!-- Avatar / Bitmoji Badge -->
+                    <div class="relative">
+                        <div id="onechat-peer-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 via-amber-500 to-emerald-400 p-0.5 shadow-md">
+                            <div class="w-full h-full rounded-full bg-slate-950 flex items-center justify-center text-yellow-300 font-bold text-base">
+                                <i class="fa-solid fa-user-astronaut"></i>
+                            </div>
+                        </div>
+                        <span class="w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-950 absolute bottom-0 right-0"></span>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h3 id="onechat-peer-title" class="font-extrabold text-sm sm:text-base text-white truncate">OneReceiver</h3>
+                            <span class="px-2 py-0.5 rounded-full bg-yellow-400/15 border border-yellow-400/40 text-yellow-300 font-mono text-[10px] font-bold">🔥 100% P2P</span>
+                        </div>
+                        <p id="onechat-role-subtitle" class="text-[11px] text-slate-400 truncate">Du er <strong class="text-cyan-300">OneGiver</strong> • Direkte kryptert UDP-tunnel</p>
+                    </div>
+                </div>
+
+                <!-- Snapchat Action Pills (Audio Call, Video Call, Snap Camera, Close) -->
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <button onclick="startOneChatCall(false)" id="btn-onechat-audiocall" class="min-h-[40px] px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition" title="Start P2P Lydsamtale">
+                        <i class="fa-solid fa-phone"></i>
+                        <span class="hidden sm:inline">Lyd</span>
+                    </button>
+                    <button onclick="startOneChatCall(true)" id="btn-onechat-videocall" class="min-h-[40px] px-3.5 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition" title="Start P2P Videosamtale">
+                        <i class="fa-solid fa-video"></i>
+                        <span>Videosamtale</span>
+                    </button>
+                    <button onclick="closeOneChatTab()" class="min-w-[38px] min-h-[38px] rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition" title="Lukk OneChat">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- MAIN ONECHAT BODY: SPLIT INTO SNAP CAMERA / VIDEO STAGE (LEFT) & SNAPCHAT FEED (RIGHT) -->
+            <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+
+                <!-- LEFT / TOP STAGE: SNAP CAMERA & LIVE P2P VIDEO CALL -->
+                <div id="onechat-media-stage" class="lg:col-span-7 relative bg-black flex flex-col items-center justify-center overflow-hidden min-h-[270px] sm:min-h-[340px]">
+                    <!-- Remote Peer Video / Animated P2P Cyber Feed when Peer has no physical webcam -->
+                    <video id="onechat-remote-video" class="hidden w-full h-full object-cover" playsinline autoplay></video>
+                    <canvas id="onechat-sim-remote-canvas" class="w-full h-full object-cover"></canvas>
+
+                    <!-- Local Camera Preview (Full when snapping, PiP when in video call) -->
+                    <div id="onechat-local-pip" class="absolute inset-0 transition-all duration-300 flex items-center justify-center overflow-hidden">
+                        <video id="onechat-local-video" class="w-full h-full object-cover" playsinline autoplay muted></video>
+                        <canvas id="onechat-snap-canvas" class="hidden"></canvas>
+                    </div>
+
+                    <!-- Snapchat Text Overlay Bar on Camera -->
+                    <div id="onechat-caption-overlay" class="hidden absolute inset-x-0 top-1/2 -translate-y-1/2 bg-black/65 backdrop-blur-sm py-2.5 px-4">
+                        <input id="onechat-snap-caption" type="text" placeholder="Skriv en Snap-tekst..." class="w-full bg-transparent text-center text-white font-bold text-sm sm:text-base focus:outline-none">
+                    </div>
+
+                    <!-- Top Camera Overlay Controls (Lens/Filter, Caption, Switch Camera) -->
+                    <div class="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                        <div class="flex items-center gap-2 pointer-events-auto">
+                            <span id="onechat-call-badge" class="px-3 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-[11px] font-mono text-yellow-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                                <span id="onechat-stage-status">Snap-Kamera Klar</span>
+                            </span>
+                            <span id="onechat-call-timer" class="hidden px-2.5 py-1 rounded-full bg-rose-600/90 text-white font-mono text-[11px] font-bold">00:00</span>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 pointer-events-auto">
+                            <button onclick="toggleOneChatCaption()" class="w-9 h-9 rounded-full bg-black/65 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center text-xs font-bold" title="Legg til tekst på Snap">
+                                T
+                            </button>
+                            <button onclick="cycleOneChatFilter()" class="px-2.5 h-9 rounded-full bg-black/65 hover:bg-black/80 text-yellow-300 border border-white/15 flex items-center gap-1 text-[11px] font-semibold" title="Bytt AR/Fargefilter">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                <span id="onechat-filter-label">Normal</span>
+                            </button>
+                            <button onclick="flipOneChatCamera()" class="w-9 h-9 rounded-full bg-black/65 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center text-xs" title="Snu kamera">
+                                <i class="fa-solid fa-camera-rotate"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Snapchat Shutter & Call Controls Bar -->
+                    <div class="absolute bottom-3 inset-x-3 flex items-center justify-center gap-3 pointer-events-auto">
+                        <!-- Mute Mic (Active during call) -->
+                        <button id="btn-onechat-mute" onclick="toggleOneChatMute()" class="w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-white flex items-center justify-center transition" title="Demp mikrofon">
+                            <i id="icon-onechat-mute" class="fa-solid fa-microphone text-xs"></i>
+                        </button>
+
+                        <!-- Toggle Camera On/Off -->
+                        <button id="btn-onechat-camtoggle" onclick="toggleOneChatVideo()" class="w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-white flex items-center justify-center transition" title="Kamera av/på">
+                            <i id="icon-onechat-cam" class="fa-solid fa-video text-xs"></i>
+                        </button>
+
+                        <!-- Big Yellow Snapchat Shutter Button (Takes & Sends Instant Snap!) -->
+                        <button onclick="captureAndSendSnap()" class="w-16 h-16 rounded-full border-4 border-yellow-400 bg-yellow-400/20 hover:bg-yellow-400/40 active:scale-90 transition flex items-center justify-center shadow-xl" title="Ta og send Snap (10s selvdestruerende)">
+                            <div class="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center text-slate-950 font-black text-lg">
+                                <i class="fa-solid fa-camera"></i>
+                            </div>
+                        </button>
+
+                        <!-- Send Heart / Bitmoji Reaction -->
+                        <button onclick="sendOneChatReaction('🔥')" class="w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-lg flex items-center justify-center transition" title="Send Snap-Reaksjon">
+                            🔥
+                        </button>
+
+                        <!-- Hangup Call Button (Shown when in active call) -->
+                        <button id="btn-onechat-hangup" onclick="endOneChatCall()" class="hidden px-4 h-10 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg">
+                            <i class="fa-solid fa-phone-slash"></i> Avslutt
+                        </button>
+                    </div>
+                </div>
+
+                <!-- RIGHT / BOTTOM STAGE: SNAPCHAT CONVERSATION FEED (VERTICAL COLORED BARS & EPHEMERAL SNAPS) -->
+                <div class="lg:col-span-5 flex flex-col bg-[#0f1422] border-t lg:border-t-0 lg:border-l border-slate-800/90 h-full overflow-hidden">
+                    <!-- Subheader: Ephemeral Mode Toggle -->
+                    <div class="px-3.5 py-2 bg-slate-900/70 border-b border-slate-800/80 flex items-center justify-between text-[11px]">
+                        <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-fire-flame-curved text-amber-400"></i>
+                            <span>OneChat Meldinger & Snaps</span>
+                        </span>
+                        <label class="flex items-center gap-1.5 text-[10px] text-amber-300 cursor-pointer">
+                            <input id="onechat-ephemeral-toggle" type="checkbox" checked class="rounded border-slate-700 text-yellow-400 focus:ring-0">
+                            <span>Utløper etter visning (10s)</span>
+                        </label>
+                    </div>
+
+                    <!-- Snapchat Style Message List -->
+                    <div id="onechat-feed" class="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs">
+                        <!-- Initial Snapchat System Card -->
+                        <div class="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 text-center space-y-1">
+                            <div class="text-yellow-400 font-extrabold text-xs">👻 OneGiver & OneReceiver er koblet sammen!</div>
+                            <p class="text-[11px] text-slate-400">Meldinger vises i ekte Snapchat-stil. Trykk på den gule utløserknappen for å sende en Bilde-Snap, eller start en direkte P2P-videosamtale.</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick Reaction Bar -->
+                    <div class="px-3 py-1.5 bg-slate-950/60 border-t border-slate-800/70 flex items-center justify-between text-sm">
+                        <span class="text-[10px] font-mono text-slate-400">Hurtig-Snap:</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="sendOneChatReaction('👋 Hei fra ' + getRoleName(APP_STATE.role) + '!')" class="hover:scale-125 transition">👋</button>
+                            <button onclick="sendOneChatReaction('⚡ Direkte gjennom brannmuren!')" class="hover:scale-125 transition">⚡</button>
+                            <button onclick="sendOneChatReaction('🔥 Beste P2P-tunnelen!')" class="hover:scale-125 transition">🔥</button>
+                            <button onclick="sendOneChatReaction('🎉 Hull slått uten STUN!')" class="hover:scale-125 transition">🎉</button>
+                        </div>
+                    </div>
+
+                    <!-- Snapchat Pill Input Bar -->
+                    <form onsubmit="handleOneChatSubmit(event)" class="p-2.5 bg-slate-900 border-t border-slate-800 flex items-center gap-2">
+                        <button type="button" onclick="captureAndSendSnap()" class="w-9 h-9 rounded-full bg-yellow-400 hover:bg-yellow-300 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow" title="Send Bilde-Snap">
+                            <i class="fa-solid fa-camera text-xs"></i>
+                        </button>
+                        <input id="onechat-input" type="text" placeholder="Send en chat til motparten..." class="flex-1 min-h-[40px] bg-slate-950 border border-slate-700/90 rounded-full px-4 py-1.5 text-xs text-white focus:border-yellow-400 focus:outline-none">
+                        <button type="submit" class="px-4 min-h-[40px] rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs flex items-center gap-1 shrink-0 transition">
+                            <span>Send</span>
+                            <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODAL FOR VIEWING FULLSCREEN EPHEMERAL SNAP -->
+    <div id="snap-viewer-modal" onclick="closeSnapViewer()" class="hidden fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 cursor-pointer">
+        <div class="absolute top-4 right-4 flex items-center gap-2">
+            <span id="snap-viewer-timer" class="w-9 h-9 rounded-full bg-yellow-400 text-slate-950 font-extrabold text-sm flex items-center justify-center">10</span>
+            <span class="text-xs text-slate-300 font-mono">Trykk hvor som helst for å lukke</span>
+        </div>
+        <img id="snap-viewer-img" src="" alt="Snap" class="max-w-full max-h-[82dvh] rounded-2xl border border-yellow-400/40 shadow-2xl object-contain">
+        <div id="snap-viewer-caption" class="mt-3 px-4 py-2 rounded-xl bg-black/80 text-white font-bold text-sm text-center"></div>
+    </div>
 
     <!-- ================= MODAL 1: PYTHON RAW UDP HOLE PUNCHING & WEBSOCKET BRIDGE SCRIPT ================= -->
     <div id="python-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
@@ -761,7 +972,7 @@
                     <i class="fa-solid fa-camera-viewfinder text-amber-400 text-base"></i>
                     <div>
                         <h3 class="font-bold text-white text-sm">Optisk QR-Skanner (Kamera / Bilde)</h3>
-                        <p class="text-[10px] text-slate-400">Leser QR-kode fra Initiator (Offer) eller Responder (Answer)</p>
+                        <p class="text-[10px] text-slate-400">Leser QR-kode fra OneGiver (Offer) eller OneReceiver (Answer)</p>
                     </div>
                 </div>
                 <button onclick="closeQrScannerModal()" class="text-slate-400 hover:text-white p-1.5">
@@ -799,7 +1010,7 @@
 
                 <div class="w-full p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
                     <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1"></i>
-                    <strong>Automatisk:</strong> Så snart QR-koden fra Initiator oppdages, genererer Responder sitt svar og åpner hull i brannmuren!
+                    <strong>Automatisk:</strong> Så snart QR-koden fra OneGiver oppdages, genererer OneReceiver sitt svar og åpner hull i brannmuren!
                 </div>
             </div>
 
@@ -815,9 +1026,9 @@
          * 1. GLOBAL APPLICATION STATE
          **************************************************************************/
         const APP_STATE = {
-            mode: 'webrtc',             // 'webrtc' | 'pybridge' | 'sim'
-            mobileTab: '3d',            // '3d' | 'connect' | 'chat' | 'log'
-            role: 'A',                  // 'A' (PC A) | 'B' (PC B)
+            mode: 'webrtc',             // 'webrtc' | 'pybridge' | 'sim' | 'onechat'
+            mobileTab: '3d',            // '3d' | 'connect' | 'onechat' | 'chat' | 'log'
+            role: 'A',                  // 'A' (OneGiver) | 'B' (OneReceiver)
             natType: 'cone',            // 'cone' | 'symmetric' | 'icmp'
             isTunnelActive: false,      // True when BOTH firewalls have matching holes open
             fwAOpen: false,
@@ -838,6 +1049,14 @@
             particles: [],
             cameraPreset: 'overview'
         };
+
+        function getRoleName(roleCode) {
+            return roleCode === 'A' ? 'OneGiver' : 'OneReceiver';
+        }
+
+        function getPeerRoleName() {
+            return APP_STATE.role === 'A' ? 'OneReceiver' : 'OneGiver';
+        }
 
         /**************************************************************************
          * 2. UI HELPER FUNCTIONS, MOBILE DRAWERS & TOAST MESSAGES
@@ -877,15 +1096,20 @@
             const chatSec = document.getElementById('right-section-chat');
             const logSec = document.getElementById('right-section-log');
             const rightTitle = document.getElementById('right-panel-title');
+            const oneChatOverlay = document.getElementById('onechat-overlay');
+
+            if (tab !== 'onechat' && oneChatOverlay) {
+                oneChatOverlay.classList.add('hidden');
+            }
 
             // Reset mobile bottom nav active states
-            ['3d', 'connect', 'chat', 'log'].forEach(t => {
+            ['3d', 'connect', 'onechat', 'chat', 'log'].forEach(t => {
                 const btn = document.getElementById(`m-nav-${t}`);
                 if (!btn) return;
                 if (t === tab) {
                     btn.className = 'flex flex-col items-center justify-center gap-1 text-cyan-400 font-semibold transition border-t-2 border-cyan-400 bg-cyan-950/20';
                 } else {
-                    btn.className = 'flex flex-col items-center justify-center gap-1 text-slate-400 font-medium transition';
+                    btn.className = `flex flex-col items-center justify-center gap-1 ${t === 'onechat' ? 'text-yellow-400 font-bold' : 'text-slate-400 font-medium'} transition`;
                 }
             });
 
@@ -901,6 +1125,13 @@
                 rightPanel.classList.remove('sheet-open');
                 rightPanel.classList.add('sheet-closed');
                 floatingHud.classList.add('hidden');
+            } else if (tab === 'onechat') {
+                leftPanel.classList.remove('sheet-open');
+                leftPanel.classList.add('sheet-closed');
+                rightPanel.classList.remove('sheet-open');
+                rightPanel.classList.add('sheet-closed');
+                floatingHud.classList.add('hidden');
+                if (oneChatOverlay) oneChatOverlay.classList.remove('hidden');
             } else if (tab === 'chat') {
                 rightPanel.classList.remove('sheet-closed');
                 rightPanel.classList.add('sheet-open');
@@ -941,6 +1172,14 @@
 
         function switchAppMode(mode) {
             APP_STATE.mode = mode;
+            const oneChatOverlay = document.getElementById('onechat-overlay');
+            if (oneChatOverlay) oneChatOverlay.classList.add('hidden');
+
+            const oneChatBtn = document.getElementById('mode-btn-onechat');
+            if (oneChatBtn) {
+                oneChatBtn.className = 'px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 text-amber-300 hover:text-yellow-200 relative';
+            }
+
             ['webrtc', 'pybridge', 'sim'].forEach(m => {
                 const btn = document.getElementById(`mode-btn-${m}`);
                 const mBtn = document.getElementById(`m-mode-btn-${m}`);
@@ -1075,19 +1314,20 @@
             if (role === 'A') {
                 btnA.className = 'min-h-[48px] p-2.5 rounded-lg border border-cyan-500/60 bg-cyan-950/50 text-left transition-all';
                 btnB.className = 'min-h-[48px] p-2.5 rounded-lg border border-slate-700/80 bg-slate-900/60 text-left transition-all hover:border-slate-600';
-                step1Title.textContent = 'Steg 1 (PC A): Generer Tilkoblingspakke';
+                step1Title.textContent = 'Steg 1 (OneGiver): Generer Tilkoblingspakke';
                 btnGenOffer.classList.remove('hidden');
                 btnProcessLabel.textContent = 'Aktiver Svar (Answer) & Slå Hull';
                 wanIpInput.value = APP_STATE.fwAWanIp;
             } else {
                 btnB.className = 'min-h-[48px] p-2.5 rounded-lg border border-emerald-500/60 bg-emerald-950/50 text-left transition-all';
                 btnA.className = 'min-h-[48px] p-2.5 rounded-lg border border-slate-700/80 bg-slate-900/60 text-left transition-all hover:border-slate-600';
-                step1Title.textContent = 'Steg 1 (PC B): Ditt genererte SDP Answer';
+                step1Title.textContent = 'Steg 1 (OneReceiver): Ditt genererte SDP Answer';
                 btnGenOffer.classList.add('hidden');
                 btnProcessLabel.textContent = 'Les Offer, Lag Answer & Slå Hull';
                 wanIpInput.value = APP_STATE.fwBWanIp;
             }
-            showToast(`Rolle satt til PC ${role}`, 'info');
+            updateOneChatHeaderRole();
+            showToast(`Rolle satt til ${getRoleName(role)}`, 'info');
         }
 
         /**************************************************************************
@@ -1107,7 +1347,7 @@
 
             pc.oniceconnectionstatechange = () => {
                 const state = pc.iceConnectionState;
-                logPacketEvent('ICE', 'Lokal PC', 'Motpart', state.toUpperCase(), `WebRTC ICE-tilstand endret til: ${state}`);
+                logPacketEvent('ICE', getRoleName(APP_STATE.role), getPeerRoleName(), state.toUpperCase(), `WebRTC ICE-tilstand endret til: ${state}`);
                 if (state === 'connected' || state === 'completed') {
                     activateFullP2PTunnel('Ekte WebRTC DataChannel');
                 }
@@ -1115,6 +1355,18 @@
 
             pc.ondatachannel = (event) => {
                 setupDataChannelHandlers(event.channel);
+            };
+
+            // Support real WebRTC audio/video streams for OneChat Video Call
+            pc.ontrack = (event) => {
+                const remoteVideo = document.getElementById('onechat-remote-video');
+                const simCanvas = document.getElementById('onechat-sim-remote-canvas');
+                if (remoteVideo && event.streams && event.streams[0]) {
+                    remoteVideo.srcObject = event.streams[0];
+                    remoteVideo.classList.remove('hidden');
+                    if (simCanvas) simCanvas.classList.add('hidden');
+                    showToast(`Mottar direkte WebRTC video/lyd fra ${getPeerRoleName()}!`, 'success');
+                }
             };
 
             return pc;
@@ -1300,7 +1552,7 @@
                 // Trigger outbound visual punch on Firewall A
                 punchSingleFirewall('A', APP_STATE.fwAPort);
                 spawn3DPacket('A_TO_B', 'UDP/ICE', true);
-                showToast('SDP Offer med injisert WAN-endepunkt er generert! Vis QR-kode eller kopier til PC B.', 'success');
+                showToast('SDP Offer fra OneGiver er generert! Vis QR-kode eller kopier til OneReceiver.', 'success');
             } catch (err) {
                 showToast('Feil ved opprettelse av SDP Offer: ' + err.message, 'error');
             }
@@ -1325,7 +1577,7 @@
                 if (!decoded.type) throw new Error('Ugyldig SDP-format');
 
                 if (decoded.type === 'offer') {
-                    // Automatically act as PC B (Responder)
+                    // Automatically act as OneReceiver (Responder)
                     if (APP_STATE.role !== 'B') selectRole('B');
                     if (decoded.wanIp) {
                         APP_STATE.fwAWanIp = decoded.wanIp;
@@ -1338,7 +1590,7 @@
                         await pc.setLocalDescription(answer);
                         renderFinalSdpWithInjectedWan(pc);
                     } else {
-                        // Offer was a lightweight WAN endpoint QR token: create full local description for Responder
+                        // Offer was a lightweight WAN endpoint QR token: create full local description for OneReceiver
                         const dc = pc.createDataChannel('offline-p2p-holepunch', { ordered: true });
                         setupDataChannelHandlers(dc);
                         const offer = await pc.createOffer();
@@ -1347,11 +1599,11 @@
                     }
 
                     runSimulationScenario('punch');
-                    showToast('QR/SDP Offer fra Initiator lest! Responder-svar er nå generert.', 'success');
+                    showToast('QR/SDP Offer fra OneGiver lest! OneReceiver-svar er nå generert.', 'success');
 
                     if (autoOpenAnswerQr) {
                         setTimeout(() => {
-                            showQrModal('local-sdp-box', 'Responder Svar-QR (Skann fra PC A)');
+                            showQrModal('local-sdp-box', 'OneReceiver Svar-QR (Skann fra OneGiver)');
                         }, 350);
                     }
                 } else if (decoded.type === 'answer') {
@@ -1364,7 +1616,7 @@
                     }
                     runSimulationScenario('punch');
                     activateFullP2PTunnel('Optisk QR-Handshake Fullført');
-                    showToast('Motpartens SDP Answer aktivert — hull slått i begge brannmurer!', 'success');
+                    showToast('OneReceivers SDP Answer aktivert — hull slått i begge brannmurer!', 'success');
                 }
             } catch (err) {
                 showToast('Kunne ikke lese SDP/QR-pakke: ' + err.message, 'error');
@@ -1529,8 +1781,8 @@ if __name__ == "__main__":
             const compactQrString = buildCompactQrPayload();
             document.getElementById('qr-summary-text').textContent = compactQrString;
             document.getElementById('qr-modal-title').textContent = customTitle || (APP_STATE.role === 'A'
-                ? 'Initiator (PC A) QR-Kode — Skann med Responder'
-                : 'Responder (PC B) Svar-QR — Skann med Initiator');
+                ? 'OneGiver QR-Kode — Skann med OneReceiver'
+                : 'OneReceiver Svar-QR — Skann med OneGiver');
             document.getElementById('qr-modal').classList.remove('hidden');
 
             const container = document.getElementById('qr-code-container');
@@ -1943,7 +2195,7 @@ if __name__ == "__main__":
                     id: 'lbl-pca',
                     pos: new THREE.Vector3(-18, 2.7, 0),
                     html: `<div class="px-2.5 py-1 rounded-lg hud-glass border-cyan-500/50 text-center">
-                        <div class="text-[11px] font-bold text-cyan-300">PC A (Lokal)</div>
+                        <div class="text-[11px] font-bold text-cyan-300">OneGiver (Initiator)</div>
                         <div id="lbl-pca-ip" class="text-[9px] font-mono text-slate-300">LAN: 192.168.1.10:51820</div>
                     </div>`
                 },
@@ -1977,7 +2229,7 @@ if __name__ == "__main__":
                     id: 'lbl-pcb',
                     pos: new THREE.Vector3(18, 2.7, 0),
                     html: `<div class="px-2.5 py-1 rounded-lg hud-glass border-emerald-500/50 text-center">
-                        <div class="text-[11px] font-bold text-emerald-300">PC B (Motpart)</div>
+                        <div class="text-[11px] font-bold text-emerald-300">OneReceiver (Responder)</div>
                         <div id="lbl-pcb-ip" class="text-[9px] font-mono text-slate-300">LAN: 10.0.0.25:51820</div>
                     </div>`
                 }
@@ -2063,8 +2315,9 @@ if __name__ == "__main__":
 
             const rttEl = document.getElementById('ping-rtt-value');
             if (rttEl) rttEl.textContent = `${APP_STATE.rttMs} ms`;
-            logPacketEvent('TUNNEL', `PC_A:${APP_STATE.fwAPort}`, `PC_B:${APP_STATE.fwBPort}`, 'OK', `Direkte toveis P2P-forbindelse etablert (${reasonText})`);
+            logPacketEvent('TUNNEL', `OneGiver:${APP_STATE.fwAPort}`, `OneReceiver:${APP_STATE.fwBPort}`, 'OK', `Direkte toveis P2P-forbindelse etablert (${reasonText})`);
             updateFirewallVisualState();
+            syncOneChatLockUI();
         }
 
         function resetFirewallStates() {
@@ -2102,6 +2355,7 @@ if __name__ == "__main__":
             text.textContent = window.innerWidth < 640 ? 'LÅST' : 'BRANNMUR LÅST';
 
             updateFirewallVisualState();
+            syncOneChatLockUI();
         }
 
         function updateFirewallVisualState() {
@@ -2309,25 +2563,25 @@ if __name__ == "__main__":
                 activateFullP2PTunnel('Direktemelding utløste synkron hullslåing');
             }
 
-            const myLabel = `PC ${APP_STATE.role} (Deg)`;
+            const myLabel = `${getRoleName(APP_STATE.role)} (Deg)`;
             appendChatMessage(myLabel, text, true);
             spawn3DPacket(APP_STATE.role === 'A' ? 'A_TO_B' : 'B_TO_A', 'UDP', true, 0);
             APP_STATE.natTtlRemaining = APP_STATE.natTtlMax;
 
-            const packetObj = JSON.stringify({ type: 'CHAT', sender: `PC ${APP_STATE.role}`, text, ts: Date.now() });
+            const packetObj = JSON.stringify({ type: 'CHAT', sender: getRoleName(APP_STATE.role), text, ts: Date.now() });
 
             if (APP_STATE.dataChannel && APP_STATE.dataChannel.readyState === 'open') {
                 APP_STATE.dataChannel.send(packetObj);
-                logPacketEvent('SCTP/UDP', `PC_${APP_STATE.role}`, 'Motpart', 'TUNNEL', `Kryptert melding (${text.length} bytes) sendt direkte`);
+                logPacketEvent('SCTP/UDP', getRoleName(APP_STATE.role), getPeerRoleName(), 'TUNNEL', `Kryptert melding (${text.length} bytes) sendt direkte`);
             } else if (APP_STATE.wsBridge && APP_STATE.wsBridge.readyState === WebSocket.OPEN) {
                 APP_STATE.wsBridge.send(packetObj);
             } else {
                 // Interactive Loopback Peer Reply in Simulator Mode so user sees bidirectional traffic
-                logPacketEvent('UDP-P2P', `PC_${APP_STATE.role}:51820`, `PC_${APP_STATE.role === 'A' ? 'B' : 'A'}:51820`, 'TUNNEL', `Payload: "${text}"`);
+                logPacketEvent('UDP-P2P', `${getRoleName(APP_STATE.role)}:51820`, `${getPeerRoleName()}:51820`, 'TUNNEL', `Payload: "${text}"`);
                 setTimeout(() => {
                     const peerRole = APP_STATE.role === 'A' ? 'B' : 'A';
                     spawn3DPacket(peerRole === 'A' ? 'A_TO_B' : 'B_TO_A', 'UDP', true, -0.2);
-                    appendChatMessage(`PC ${peerRole} (Direkte P2P ACK)`, `Mottok "${text}" direkte gjennom brannmurhullet på port ${APP_STATE.fwBPort}!`, false);
+                    appendChatMessage(`${getRoleName(peerRole)} (Direkte P2P ACK)`, `Mottok "${text}" direkte gjennom brannmurhullet på port ${APP_STATE.fwBPort}!`, false);
                 }, 650);
             }
         }
@@ -2344,7 +2598,14 @@ if __name__ == "__main__":
                 try {
                     const parsed = JSON.parse(data);
                     if (parsed.type === 'CHAT') {
-                        appendChatMessage(parsed.sender || 'Motpart', parsed.text, false);
+                        appendChatMessage(parsed.sender || getPeerRoleName(), parsed.text, false);
+                        appendOneChatEntry(parsed.sender || getPeerRoleName(), parsed.text, false, 'chat');
+                    } else if (parsed.type === 'ONECHAT_MSG') {
+                        appendOneChatEntry(parsed.sender || getPeerRoleName(), parsed.text, false, 'chat');
+                    } else if (parsed.type === 'ONECHAT_SNAP') {
+                        appendOneChatSnap(parsed.sender || getPeerRoleName(), parsed.image, parsed.caption, false);
+                    } else if (parsed.type === 'ONECHAT_CALL_SIGNAL') {
+                        handleIncomingOneChatCallSignal(parsed);
                     } else if (parsed.type === 'PING') {
                         if (APP_STATE.dataChannel && APP_STATE.dataChannel.readyState === 'open') {
                             APP_STATE.dataChannel.send(JSON.stringify({ type: 'PONG', ts: parsed.ts }));
@@ -2363,7 +2624,7 @@ if __name__ == "__main__":
                         incomingFileMeta = null;
                     }
                 } catch (e) {
-                    appendChatMessage('Motpart (Rå UDP)', data, false);
+                    appendChatMessage(getPeerRoleName(), data, false);
                 }
             } else if (data instanceof ArrayBuffer && incomingFileMeta) {
                 incomingFileChunks.push(data);
@@ -2373,6 +2634,530 @@ if __name__ == "__main__":
                 document.getElementById('file-name-label').textContent = `Mottar: ${incomingFileMeta.name}`;
                 document.getElementById('file-pct-label').textContent = `${pct}%`;
                 document.getElementById('file-progress-bar').style.width = `${pct}%`;
+            }
+        }
+
+        /**************************************************************************
+         * 9B. ONECHAT SNAPCHAT-STYLE MESSAGING, EPHEMERAL SNAPS & P2P VIDEO CALL
+         **************************************************************************/
+        const ONECHAT_STATE = {
+            isOpen: false,
+            localStream: null,
+            inCall: false,
+            isVideoCall: true,
+            isMuted: false,
+            isCameraOff: false,
+            facingMode: 'user',
+            filterIndex: 0,
+            filters: [
+                { name: 'Normal', css: 'none' },
+                { name: 'Cyber Neon', css: 'saturate(1.9) contrast(1.25) hue-rotate(15deg)' },
+                { name: 'Night Vision', css: 'sepia(1) hue-rotate(85deg) saturate(2.5) contrast(1.3)' },
+                { name: 'Thermal', css: 'invert(0.85) hue-rotate(180deg) saturate(2.2)' },
+                { name: 'Noir B/W', css: 'grayscale(1) contrast(1.4)' }
+            ],
+            callStartTime: 0,
+            callTimerInterval: null,
+            simAnimFrame: null,
+            snapViewerInterval: null
+        };
+
+        function syncOneChatLockUI() {
+            const topLock = document.getElementById('onechat-top-lock-icon');
+            const mLock = document.getElementById('m-onechat-lock');
+            const gate = document.getElementById('onechat-locked-gate');
+
+            if (APP_STATE.isTunnelActive) {
+                if (topLock) {
+                    topLock.className = 'fa-solid fa-lock-open text-[10px] text-emerald-400';
+                }
+                if (mLock) {
+                    mLock.className = 'fa-solid fa-check text-[8px] text-emerald-400 absolute -top-1 -right-2.5';
+                }
+                if (gate) gate.classList.add('hidden');
+            } else {
+                if (topLock) {
+                    topLock.className = 'fa-solid fa-lock text-[10px] text-rose-400';
+                }
+                if (mLock) {
+                    mLock.className = 'fa-solid fa-lock text-[8px] text-rose-400 absolute -top-1 -right-2.5';
+                }
+                if (gate) gate.classList.remove('hidden');
+            }
+            updateOneChatHeaderRole();
+        }
+
+        function updateOneChatHeaderRole() {
+            const myName = getRoleName(APP_STATE.role);
+            const peerName = getPeerRoleName();
+            const titleEl = document.getElementById('onechat-peer-title');
+            const subEl = document.getElementById('onechat-role-subtitle');
+            if (titleEl) titleEl.textContent = peerName;
+            if (subEl) {
+                subEl.innerHTML = `Du er <strong class="${APP_STATE.role === 'A' ? 'text-cyan-300' : 'text-emerald-300'}">${myName}</strong> • Direkte P2P med <strong class="text-yellow-300">${peerName}</strong>`;
+            }
+        }
+
+        async function openOneChatTab() {
+            ONECHAT_STATE.isOpen = true;
+            syncOneChatLockUI();
+
+            const overlay = document.getElementById('onechat-overlay');
+            if (overlay) overlay.classList.remove('hidden');
+
+            // Highlight top desktop button
+            const topBtn = document.getElementById('mode-btn-onechat');
+            if (topBtn) {
+                topBtn.className = 'px-3 py-1.5 rounded-md font-extrabold transition-all flex items-center gap-1.5 bg-yellow-400 text-slate-950 shadow-lg';
+            }
+
+            if (window.innerWidth < 1024) {
+                switchMobileTab('onechat');
+            }
+
+            await ensureOneChatCameraStarted();
+            startSimulatedRemoteCanvasLoop();
+        }
+
+        function closeOneChatTab() {
+            ONECHAT_STATE.isOpen = false;
+            const overlay = document.getElementById('onechat-overlay');
+            if (overlay) overlay.classList.add('hidden');
+
+            const topBtn = document.getElementById('mode-btn-onechat');
+            if (topBtn) {
+                topBtn.className = 'px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 text-amber-300 hover:text-yellow-200 relative';
+            }
+
+            if (window.innerWidth < 1024) {
+                switchMobileTab('3d');
+            }
+        }
+
+        function quickConnectForOneChat() {
+            runSimulationScenario('punch');
+            activateFullP2PTunnel('OneChat Hurtig-Hullslåing');
+            syncOneChatLockUI();
+            showToast('Hull slått! OneGiver og OneReceiver er nå koblet sammen i OneChat.', 'success');
+        }
+
+        async function ensureOneChatCameraStarted() {
+            const localVideo = document.getElementById('onechat-local-video');
+            if (ONECHAT_STATE.localStream) {
+                localVideo.srcObject = ONECHAT_STATE.localStream;
+                return;
+            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: ONECHAT_STATE.facingMode, width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: true
+                });
+                ONECHAT_STATE.localStream = stream;
+                localVideo.srcObject = stream;
+                await localVideo.play();
+            } catch (err) {
+                // Fallback if webcam permission is denied or unavailable: local video stays hidden and synthetic Snap generator is used
+                document.getElementById('onechat-stage-status').textContent = 'Syntetisk P2P-Kamera Aktiv';
+            }
+        }
+
+        async function flipOneChatCamera() {
+            ONECHAT_STATE.facingMode = ONECHAT_STATE.facingMode === 'user' ? 'environment' : 'user';
+            if (ONECHAT_STATE.localStream) {
+                ONECHAT_STATE.localStream.getTracks().forEach(t => t.stop());
+                ONECHAT_STATE.localStream = null;
+            }
+            await ensureOneChatCameraStarted();
+            showToast('Byttet kameraretning i OneChat', 'info');
+        }
+
+        function cycleOneChatFilter() {
+            ONECHAT_STATE.filterIndex = (ONECHAT_STATE.filterIndex + 1) % ONECHAT_STATE.filters.length;
+            const f = ONECHAT_STATE.filters[ONECHAT_STATE.filterIndex];
+            document.getElementById('onechat-filter-label').textContent = f.name;
+            const localVideo = document.getElementById('onechat-local-video');
+            const simCanvas = document.getElementById('onechat-sim-remote-canvas');
+            if (localVideo) localVideo.style.filter = f.css;
+            if (simCanvas) simCanvas.style.filter = f.css;
+        }
+
+        function toggleOneChatCaption() {
+            const capWrap = document.getElementById('onechat-caption-overlay');
+            const input = document.getElementById('onechat-snap-caption');
+            capWrap.classList.toggle('hidden');
+            if (!capWrap.classList.contains('hidden')) {
+                input.focus();
+            }
+        }
+
+        function startSimulatedRemoteCanvasLoop() {
+            if (ONECHAT_STATE.simAnimFrame) cancelAnimationFrame(ONECHAT_STATE.simAnimFrame);
+            const canvas = document.getElementById('onechat-sim-remote-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            const renderLoop = () => {
+                if (!ONECHAT_STATE.isOpen) return;
+                if (canvas.width !== 480) {
+                    canvas.width = 480;
+                    canvas.height = 360;
+                }
+                const t = performance.now() * 0.002;
+                const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                grd.addColorStop(0, '#071324');
+                grd.addColorStop(0.5, '#0b2138');
+                grd.addColorStop(1, '#052e2b');
+                ctx.fillStyle = grd;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Animated P2P pulse rings for peer avatar
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2 - 10;
+                for (let i = 0; i < 3; i++) {
+                    const rad = 32 + ((t * 25 + i * 28) % 85);
+                    const alpha = Math.max(0, 1 - (rad - 32) / 85) * 0.45;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+                    ctx.strokeStyle = ONECHAT_STATE.inCall ? `rgba(16, 185, 129, ${alpha})` : `rgba(250, 204, 21, ${alpha})`;
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                }
+
+                // Peer Avatar Circle
+                ctx.beginPath();
+                ctx.arc(cx, cy, 34, 0, Math.PI * 2);
+                ctx.fillStyle = '#0f172a';
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = ONECHAT_STATE.inCall ? '#10b981' : '#facc15';
+                ctx.stroke();
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 15px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(getPeerRoleName(), cx, cy + 56);
+
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = '11px JetBrains Mono, monospace';
+                const statusLine = ONECHAT_STATE.inCall
+                    ? `DIREKTE P2P VIDEO/LYD STREAM (${APP_STATE.fwBWanIp}:${APP_STATE.fwBPort})`
+                    : `KLAR FOR SNAP & VIDEOSAMTALE`;
+                ctx.fillText(statusLine, cx, cy + 76);
+
+                ONECHAT_STATE.simAnimFrame = requestAnimationFrame(renderLoop);
+            };
+            renderLoop();
+        }
+
+        async function startOneChatCall(withVideo = true) {
+            if (!APP_STATE.isTunnelActive) {
+                quickConnectForOneChat();
+            }
+            ONECHAT_STATE.inCall = true;
+            ONECHAT_STATE.isVideoCall = withVideo;
+
+            await ensureOneChatCameraStarted();
+
+            // Put local video into Snapchat Picture-in-Picture corner card so remote peer stream is visible
+            const pip = document.getElementById('onechat-local-pip');
+            pip.className = 'absolute bottom-20 right-3 w-28 h-40 sm:w-36 sm:h-48 rounded-2xl border-2 border-yellow-400 shadow-2xl overflow-hidden z-20 transition-all duration-300 bg-slate-950';
+
+            document.getElementById('btn-onechat-hangup').classList.remove('hidden');
+            document.getElementById('onechat-call-timer').classList.remove('hidden');
+            document.getElementById('onechat-stage-status').textContent = withVideo
+                ? `P2P Videosamtale med ${getPeerRoleName()}`
+                : `P2P Lydsamtale med ${getPeerRoleName()}`;
+
+            ONECHAT_STATE.callStartTime = Date.now();
+            if (ONECHAT_STATE.callTimerInterval) clearInterval(ONECHAT_STATE.callTimerInterval);
+            ONECHAT_STATE.callTimerInterval = setInterval(() => {
+                const sec = Math.floor((Date.now() - ONECHAT_STATE.callStartTime) / 1000);
+                const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+                const ss = String(sec % 60).padStart(2, '0');
+                document.getElementById('onechat-call-timer').textContent = `${mm}:${ss}`;
+            }, 1000);
+
+            // Attach media tracks to real WebRTC peer connection if present
+            if (APP_STATE.rtcPeer && ONECHAT_STATE.localStream) {
+                try {
+                    ONECHAT_STATE.localStream.getTracks().forEach(track => {
+                        APP_STATE.rtcPeer.addTrack(track, ONECHAT_STATE.localStream);
+                    });
+                } catch (e) {}
+            }
+
+            // Send call signal over P2P channel & 3D stream burst
+            sendOneChatPayload({
+                type: 'ONECHAT_CALL_SIGNAL',
+                action: 'START',
+                withVideo,
+                sender: getRoleName(APP_STATE.role)
+            });
+
+            appendOneChatEntry('SYSTEM', `📹 ${getRoleName(APP_STATE.role)} startet en direkte P2P ${withVideo ? 'videosamtale' : 'lydsamtale'}`, true, 'call');
+            spawn3DPacket(APP_STATE.role === 'A' ? 'A_TO_B' : 'B_TO_A', 'UDP', true, 0.25);
+            spawn3DPacket(APP_STATE.role === 'A' ? 'B_TO_A' : 'A_TO_B', 'UDP', true, -0.25);
+            showToast(`Direkte P2P ${withVideo ? 'videosamtale' : 'lydsamtale'} startet med ${getPeerRoleName()}!`, 'success');
+        }
+
+        function endOneChatCall() {
+            ONECHAT_STATE.inCall = false;
+            if (ONECHAT_STATE.callTimerInterval) {
+                clearInterval(ONECHAT_STATE.callTimerInterval);
+                ONECHAT_STATE.callTimerInterval = null;
+            }
+            document.getElementById('btn-onechat-hangup').classList.add('hidden');
+            document.getElementById('onechat-call-timer').classList.add('hidden');
+            document.getElementById('onechat-stage-status').textContent = 'Snap-Kamera Klar';
+
+            const pip = document.getElementById('onechat-local-pip');
+            pip.className = 'absolute inset-0 transition-all duration-300 flex items-center justify-center overflow-hidden';
+
+            sendOneChatPayload({
+                type: 'ONECHAT_CALL_SIGNAL',
+                action: 'END',
+                sender: getRoleName(APP_STATE.role)
+            });
+            appendOneChatEntry('SYSTEM', `Samtalen mellom OneGiver og OneReceiver ble avsluttet.`, true, 'call');
+            showToast('Videosamtale avsluttet.', 'info');
+        }
+
+        function handleIncomingOneChatCallSignal(sig) {
+            if (sig.action === 'START') {
+                appendOneChatEntry(sig.sender || getPeerRoleName(), `📹 Startet direkte P2P ${sig.withVideo ? 'videosamtale' : 'lydsamtale'}!`, false, 'call');
+                showToast(`${sig.sender || getPeerRoleName()} ringer deg direkte på OneChat!`, 'success');
+                if (!ONECHAT_STATE.inCall) {
+                    startOneChatCall(sig.withVideo);
+                }
+            } else if (sig.action === 'END') {
+                if (ONECHAT_STATE.inCall) endOneChatCall();
+            }
+        }
+
+        function toggleOneChatMute() {
+            ONECHAT_STATE.isMuted = !ONECHAT_STATE.isMuted;
+            if (ONECHAT_STATE.localStream) {
+                ONECHAT_STATE.localStream.getAudioTracks().forEach(t => t.enabled = !ONECHAT_STATE.isMuted);
+            }
+            const icon = document.getElementById('icon-onechat-mute');
+            const btn = document.getElementById('btn-onechat-mute');
+            if (ONECHAT_STATE.isMuted) {
+                icon.className = 'fa-solid fa-microphone-slash text-xs text-rose-400';
+                btn.classList.add('border-rose-500/60');
+            } else {
+                icon.className = 'fa-solid fa-microphone text-xs text-white';
+                btn.classList.remove('border-rose-500/60');
+            }
+        }
+
+        function toggleOneChatVideo() {
+            ONECHAT_STATE.isCameraOff = !ONECHAT_STATE.isCameraOff;
+            if (ONECHAT_STATE.localStream) {
+                ONECHAT_STATE.localStream.getVideoTracks().forEach(t => t.enabled = !ONECHAT_STATE.isCameraOff);
+            }
+            const icon = document.getElementById('icon-onechat-cam');
+            icon.className = ONECHAT_STATE.isCameraOff
+                ? 'fa-solid fa-video-slash text-xs text-rose-400'
+                : 'fa-solid fa-video text-xs text-white';
+        }
+
+        function captureAndSendSnap() {
+            const video = document.getElementById('onechat-local-video');
+            const snapCanvas = document.getElementById('onechat-snap-canvas');
+            const captionInput = document.getElementById('onechat-snap-caption');
+            const caption = captionInput.value.trim() || `Snap fra ${getRoleName(APP_STATE.role)} ⚡`;
+
+            snapCanvas.width = 480;
+            snapCanvas.height = 360;
+            const ctx = snapCanvas.getContext('2d');
+
+            const filterCss = ONECHAT_STATE.filters[ONECHAT_STATE.filterIndex].css;
+            ctx.filter = filterCss;
+
+            if (ONECHAT_STATE.localStream && video.readyState >= 2 && !ONECHAT_STATE.isCameraOff) {
+                ctx.drawImage(video, 0, 0, snapCanvas.width, snapCanvas.height);
+            } else {
+                // Copy from cyber simulated canvas if user has no physical camera
+                const simCanvas = document.getElementById('onechat-sim-remote-canvas');
+                ctx.drawImage(simCanvas, 0, 0, snapCanvas.width, snapCanvas.height);
+            }
+            ctx.filter = 'none';
+
+            // Draw classic Snapchat translucent black caption bar across middle
+            if (caption) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+                ctx.fillRect(0, snapCanvas.height * 0.68, snapCanvas.width, 40);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(caption, snapCanvas.width / 2, snapCanvas.height * 0.68 + 25);
+            }
+
+            // Stamp sender role in top-left
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 12px JetBrains Mono, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(`👻 ${getRoleName(APP_STATE.role)} • P2P SNAP`, 14, 24);
+
+            const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.72);
+            captionInput.value = '';
+            document.getElementById('onechat-caption-overlay').classList.add('hidden');
+
+            appendOneChatSnap(getRoleName(APP_STATE.role), dataUrl, caption, true);
+            sendOneChatPayload({
+                type: 'ONECHAT_SNAP',
+                sender: getRoleName(APP_STATE.role),
+                image: dataUrl,
+                caption
+            });
+
+            spawn3DPacket(APP_STATE.role === 'A' ? 'A_TO_B' : 'B_TO_A', 'UDP', true, 0.3);
+            showToast(`Bilde-Snap sendt direkte til ${getPeerRoleName()}!`, 'success');
+
+            // If in simulator mode without a remote peer browser connected, let peer send a fun Snap reply
+            if (!APP_STATE.dataChannel || APP_STATE.dataChannel.readyState !== 'open') {
+                setTimeout(() => {
+                    spawn3DPacket(APP_STATE.role === 'A' ? 'B_TO_A' : 'A_TO_B', 'UDP', true, -0.3);
+                    appendOneChatEntry(getPeerRoleName(), `🔥 Åpnet din Snap ("${caption}") direkte over UDP port ${APP_STATE.fwBPort}!`, false, 'chat');
+                }, 1100);
+            }
+        }
+
+        function appendOneChatSnap(sender, imageUrl, caption, isSelf) {
+            const feed = document.getElementById('onechat-feed');
+            const isEphemeral = document.getElementById('onechat-ephemeral-toggle').checked;
+
+            const card = document.createElement('div');
+            // Snapchat style vertical colored bar: Red for Snaps!
+            card.className = 'pl-3 border-l-4 border-rose-500 bg-slate-900/85 rounded-r-xl p-2.5 space-y-1.5 transition-all duration-300';
+            card.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="font-extrabold text-[11px] uppercase tracking-wider ${isSelf ? 'text-rose-400' : 'text-yellow-300'}">${sender}</span>
+                    <span class="text-[10px] font-mono text-rose-400 flex items-center gap-1">
+                        <i class="fa-solid fa-square"></i> NY BILDE-SNAP ${isEphemeral ? '(10s)' : ''}
+                    </span>
+                </div>
+                <div onclick="openSnapViewer('${imageUrl}', '${caption.replace(/'/g, "\\'")}')" class="group relative rounded-xl overflow-hidden border border-rose-500/40 cursor-pointer max-h-40 bg-black flex items-center justify-center">
+                    <img src="${imageUrl}" alt="Snap" class="w-full h-36 object-cover group-hover:scale-105 transition duration-300">
+                    <div class="absolute inset-0 bg-black/35 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                        <span class="px-3 py-1 rounded-full bg-yellow-400 text-slate-950 font-extrabold text-xs">Trykk for å åpne Snap</span>
+                    </div>
+                </div>
+            `;
+            feed.appendChild(card);
+            feed.scrollTop = feed.scrollHeight;
+
+            if (isEphemeral) {
+                setTimeout(() => {
+                    card.style.opacity = '0.35';
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                            <span>${sender}</span>
+                            <span><i class="fa-regular fa-square text-rose-400 mr-1"></i>Snap Åpnet & Utløpt</span>
+                        </div>
+                    `;
+                }, 14000);
+            }
+        }
+
+        function openSnapViewer(imageUrl, caption) {
+            const modal = document.getElementById('snap-viewer-modal');
+            const img = document.getElementById('snap-viewer-img');
+            const cap = document.getElementById('snap-viewer-caption');
+            const timerEl = document.getElementById('snap-viewer-timer');
+
+            img.src = imageUrl;
+            cap.textContent = caption || '';
+            modal.classList.remove('hidden');
+
+            let remaining = 10;
+            timerEl.textContent = remaining;
+            if (ONECHAT_STATE.snapViewerInterval) clearInterval(ONECHAT_STATE.snapViewerInterval);
+            ONECHAT_STATE.snapViewerInterval = setInterval(() => {
+                remaining--;
+                timerEl.textContent = remaining;
+                if (remaining <= 0) {
+                    closeSnapViewer();
+                }
+            }, 1000);
+        }
+
+        function closeSnapViewer() {
+            if (ONECHAT_STATE.snapViewerInterval) {
+                clearInterval(ONECHAT_STATE.snapViewerInterval);
+                ONECHAT_STATE.snapViewerInterval = null;
+            }
+            document.getElementById('snap-viewer-modal').classList.add('hidden');
+        }
+
+        function appendOneChatEntry(sender, text, isSelf, kind = 'chat') {
+            const feed = document.getElementById('onechat-feed');
+            const isEphemeral = document.getElementById('onechat-ephemeral-toggle').checked;
+
+            // Snapchat uses thin vertical bar on the left: Blue for Chat, Purple/Emerald for Video/Call
+            const barColor = kind === 'call'
+                ? 'border-emerald-400'
+                : (isSelf ? 'border-cyan-400' : 'border-yellow-400');
+            const nameColor = isSelf ? 'text-cyan-300' : 'text-yellow-300';
+
+            const item = document.createElement('div');
+            item.className = `pl-3 border-l-4 ${barColor} bg-slate-900/75 rounded-r-xl py-2 px-3 transition-all duration-300`;
+            item.innerHTML = `
+                <div class="flex items-center justify-between mb-0.5">
+                    <span class="font-extrabold text-[11px] uppercase tracking-wider ${nameColor}">${sender}</span>
+                    <span class="text-[9px] font-mono text-slate-500">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                </div>
+                <div class="text-slate-100 text-xs leading-relaxed break-words">${text.replace(/</g, '&lt;')}</div>
+            `;
+            feed.appendChild(item);
+            feed.scrollTop = feed.scrollHeight;
+
+            if (isEphemeral && kind === 'chat') {
+                setTimeout(() => {
+                    item.style.opacity = '0.35';
+                }, 15000);
+            }
+        }
+
+        function sendOneChatPayload(obj) {
+            APP_STATE.natTtlRemaining = APP_STATE.natTtlMax;
+            const raw = JSON.stringify(obj);
+            if (APP_STATE.dataChannel && APP_STATE.dataChannel.readyState === 'open') {
+                APP_STATE.dataChannel.send(raw);
+            } else if (APP_STATE.wsBridge && APP_STATE.wsBridge.readyState === WebSocket.OPEN) {
+                APP_STATE.wsBridge.send(raw);
+            }
+        }
+
+        function sendOneChatReaction(text) {
+            const myName = getRoleName(APP_STATE.role);
+            appendOneChatEntry(myName, text, true, 'chat');
+            sendOneChatPayload({ type: 'ONECHAT_MSG', sender: myName, text });
+            spawn3DPacket(APP_STATE.role === 'A' ? 'A_TO_B' : 'B_TO_A', 'UDP', true, 0.15);
+        }
+
+        function handleOneChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('onechat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+
+            const myName = getRoleName(APP_STATE.role);
+            const peerName = getPeerRoleName();
+            appendOneChatEntry(myName, text, true, 'chat');
+            appendChatMessage(`${myName} (OneChat)`, text, true);
+
+            sendOneChatPayload({ type: 'ONECHAT_MSG', sender: myName, text });
+            spawn3DPacket(APP_STATE.role === 'A' ? 'A_TO_B' : 'B_TO_A', 'UDP', true, 0);
+
+            if (!APP_STATE.dataChannel || APP_STATE.dataChannel.readyState !== 'open') {
+                setTimeout(() => {
+                    spawn3DPacket(APP_STATE.role === 'A' ? 'B_TO_A' : 'A_TO_B', 'UDP', true, -0.2);
+                    appendOneChatEntry(peerName, `👻 Lest på OneChat: "${text}" (Direkte P2P uten mellomtjener)`, false, 'chat');
+                }, 700);
             }
         }
 
