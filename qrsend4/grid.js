@@ -10,8 +10,9 @@
 // Mottakeren finner rammen, leser fargene i paletteremsen og klassifiserer hver
 // datacelle etter nærmeste referansefarge. Symbolets CRC avgjør om avlesingen er riktig.
 
-export const PALETTE4 = [[0, 0, 0], [255, 255, 255], [230, 30, 30], [30, 80, 230]];
-export const PALETTE8 = [...PALETTE4, [30, 170, 60], [250, 210, 20], [220, 40, 200], [30, 200, 210]];
+// Hjørnene i RGB-kuben: størst mulig avstand mellom fargene.
+export const PALETTE4 = [[0, 0, 0], [255, 255, 255], [255, 0, 0], [0, 0, 255]];
+export const PALETTE8 = [...PALETTE4, [0, 255, 0], [255, 255, 0], [255, 0, 255], [0, 255, 255]];
 export const palette = (P) => (P === 8 ? PALETTE8 : PALETTE4);
 export const bitsPer = (P) => (P === 8 ? 3 : 2);
 export const gridCapacity = (G, P) => Math.floor((G * G * bitsPer(P)) / 8);
@@ -38,31 +39,30 @@ function bytesFromCells(cells, G, P) {
   return out;
 }
 
-// Tegner rutenettet i området (x0,y0,W,H) på et lerret/kontekst. Bruker hele arealet.
+// Tegner rutenettet i området (x0,y0,W,H). Rutenettet bygges med én piksel per celle
+// og skaleres opp uten utjevning, så kantene blir skarpe og tegningen rask.
+let small = null, smallCtx = null;
 export function renderGrid(ctx, x0, y0, W, H, bytes, G, P) {
   const { C, R } = dims(G);
   ctx.fillStyle = '#fff';
   ctx.fillRect(x0, y0, W, H);
   const s = Math.floor(Math.min(W / C, H / R));
-  if (s < 1) return;
-  const ox = x0 + Math.floor((W - C * s) / 2), oy = y0 + Math.floor((H - R * s) / 2);
-  const pal = palette(P).map(([r, g, b]) => `rgb(${r},${g},${b})`);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(ox, oy, C * s, s);
-  ctx.fillRect(ox, oy + (R - 1) * s, C * s, s);
-  ctx.fillRect(ox, oy, s, R * s);
-  ctx.fillRect(ox + (C - 1) * s, oy, s, R * s);
-  for (let c = 1; c <= G; c++) {
-    ctx.fillStyle = pal[(c - 1) % P];
-    ctx.fillRect(ox + c * s, oy + s, s, s);
+  if (s < 1) return null;
+  if (!small || small.width !== C || small.height !== R) {
+    small = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(C, R) : Object.assign(document.createElement('canvas'), { width: C, height: R });
+    smallCtx = small.getContext('2d');
   }
+  const img = smallCtx.createImageData(C, R), d = img.data, pal = palette(P);
+  const put = (c, r, k) => { const o = (r * C + c) * 4; d[o] = pal[k][0]; d[o + 1] = pal[k][1]; d[o + 2] = pal[k][2]; d[o + 3] = 255; };
+  for (let c = 0; c < C; c++) { put(c, 0, 0); put(c, R - 1, 0); }
+  for (let r = 0; r < R; r++) { put(0, r, 0); put(C - 1, r, 0); }
+  for (let c = 1; c <= G; c++) put(c, 1, (c - 1) % P);
   const cells = cellsFromBytes(bytes, G, P);
-  for (let r = 0; r < G; r++) {
-    for (let c = 0; c < G; c++) {
-      ctx.fillStyle = pal[cells[r * G + c]];
-      ctx.fillRect(ox + (c + 1) * s, oy + (r + 2) * s, s, s);
-    }
-  }
+  for (let r = 0; r < G; r++) for (let c = 0; c < G; c++) put(c + 1, r + 2, cells[r * G + c]);
+  smallCtx.putImageData(img, 0, 0);
+  const ox = x0 + Math.floor((W - C * s) / 2), oy = y0 + Math.floor((H - R * s) / 2);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(small, ox, oy, C * s, R * s);
   return { cell: s, x: ox, y: oy };
 }
 
@@ -139,12 +139,16 @@ export function decodeGrid(img, G, P) {
   }
   if (!ext.tl || !ext.tr || !ext.br || !ext.bl) return NONE;
   const screen = [ext.tl, ext.tr, ext.br, ext.bl];
-  // Punkt p er inne i skjermfirkanten hvis det er på samme side av alle fire kanter.
-  const inside = (p) => {
+  // Et punkt er inne i skjermfirkanten hvis det er på samme side av alle fire kanter.
+  const ex = [], ey = [], ax = [], ay = [];
+  for (let i = 0; i < 4; i++) {
+    const a = screen[i], b = screen[(i + 1) % 4];
+    ax.push(a[0]); ay.push(a[1]); ex.push(b[0] - a[0]); ey.push(b[1] - a[1]);
+  }
+  const inside = (x, y) => {
     let pos = 0, neg = 0;
     for (let i = 0; i < 4; i++) {
-      const a = screen[i], b = screen[(i + 1) % 4];
-      const cr = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+      const cr = ex[i] * (y - ay[i]) - ey[i] * (x - ax[i]);
       if (cr > 0) pos++; else if (cr < 0) neg++;
     }
     return pos === 0 || neg === 0;
@@ -155,8 +159,12 @@ export function decodeGrid(img, G, P) {
   let dark = 0;
   for (let y = ry0; y <= ry1; y++) {
     for (let x = rx0; x <= rx1; x++) {
-      if (lum((y * w + x) * 4) >= 90) continue;
-      if (!inside([x, y])) continue;
+      const o = (y * w + x) * 4;
+      if (data[o + 1] >= 110) continue;          // rask forhåndssjekk på grønn kanal
+      if (lum(o) >= 90) continue;
+      const sm = x + y, df = x - y;
+      if (sm > bor.minS && sm < bor.maxS && df > bor.minD && df < bor.maxD) { dark++; continue; }
+      if (!inside(x, y)) continue;
       dark++;
       track(bor, x, y);
     }
@@ -175,7 +183,7 @@ export function decodeGrid(img, G, P) {
   if (!map) return NONE;
 
   // 4) Prøv hver celle: gjennomsnitt av midten.
-  const rad = Math.min(cw, ch) >= 7 ? 1 : 0;
+  const rad = Math.min(2, Math.floor(Math.min(cw, ch) / 6));
   const sample = (c, r) => {
     const [px, py] = map(c + 0.5, r + 0.5);
     const cx = Math.round(px), cy = Math.round(py);

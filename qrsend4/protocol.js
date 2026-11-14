@@ -1,9 +1,10 @@
-// QR-overføring 4: fontene-koder (LT-koder) over QR-koder og fargerutenett.
+// QR-overføring 4: fontene-kode over QR-koder og fargerutenett.
 //
 // Strømmen [u16 metaLen][meta JSON][bildefil] deles i K blokker på B byte.
-// Hver symbol er en XOR av noen blokker, og tapte symboler gjør ingenting:
-// mottakeren trenger bare nok symboler, ikke de bestemte.
-// De første K symbolene er systematiske (en blokk hver), deretter tilfeldige.
+// De første K symbolene er systematiske (én blokk hver). Deretter er hvert symbol en XOR av
+// et tilfeldig utvalg blokker (tilfeldig lineær kode over GF(2)). Mottakeren løser ligningene
+// med Gauss-eliminasjon og trenger normalt bare noen få symboler mer enn K, uansett hvilke
+// som gikk tapt.
 //
 // Symbol (byte, big endian):
 //   0      1  magic 0x46 ('F')
@@ -96,61 +97,47 @@ export function parseSymbol(b) {
   };
 }
 
-// ---------------------------------------------------------------- fordeling
-const cdfCache = new Map();
-
-// Robust soliton-fordeling (Luby 2002), c = 0.1, delta = 0.05.
-export function degreeCdf(K) {
-  if (cdfCache.has(K)) return cdfCache.get(K);
-  const cdf = new Float64Array(K + 1);
-  if (K === 1) {
-    cdf[1] = 1;
-  } else {
-    const c = 0.1, delta = 0.05;
-    const S = c * Math.log(K / delta) * Math.sqrt(K);
-    const pivot = Math.max(1, Math.min(K, Math.floor(K / S)));
-    const mu = new Float64Array(K + 1);
-    let Z = 0;
-    for (let i = 1; i <= K; i++) {
-      const rho = i === 1 ? 1 / K : 1 / (i * (i - 1));
-      let tau = 0;
-      if (i < pivot) tau = S / (K * i);
-      else if (i === pivot) tau = (S * Math.log(S / delta)) / K;
-      mu[i] = rho + tau;
-      Z += mu[i];
-    }
-    let acc = 0;
-    for (let i = 1; i <= K; i++) { acc += mu[i] / Z; cdf[i] = acc; }
-    cdf[K] = 1;
-  }
-  cdfCache.set(K, cdf);
-  return cdf;
-}
-
-// Liten, deterministisk PRNG (mulberry32): samme seed gir samme blokker hos sender og mottaker.
+// ---------------------------------------------------------------- koeffisienter
+// Liten, deterministisk PRNG (mulberry32): samme seed gir samme utvalg hos sender og mottaker.
 export function mulberry32(a) {
   return () => {
     a |= 0; a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return (t ^ (t >>> 14)) >>> 0;
   };
 }
 
-export function neighbors(K, seed, flags) {
-  if (flags & FLAG_SYSTEMATIC) return [seed];
+const DENSE_MAX = 1024;   // opptil så mange blokker: hver blokk er med i et symbol med sannsynlighet 1/2
+const SPARSE_DEG = 512;   // flere blokker enn det: hvert symbol er XOR av 512 tilfeldige blokker
+
+// Hvilke blokker et symbol er XOR av, som bitsett (bit i = blokk i). null hvis ugyldig.
+export function coeffWords(K, seed, flags) {
+  const w = new Uint32Array((K + 31) >>> 5);
+  if (flags & FLAG_SYSTEMATIC) {
+    if (seed >= K) return null;
+    w[seed >>> 5] = (1 << (seed & 31)) >>> 0;
+    return w;
+  }
   const rnd = mulberry32(seed);
-  const cdf = degreeCdf(K);
-  const u = rnd();
-  let d = K;
-  for (let i = 1; i <= K; i++) if (u <= cdf[i]) { d = i; break; }
-  const set = new Set();
-  while (set.size < d) set.add(Math.floor(rnd() * K));
-  return [...set];
+  if (K <= DENSE_MAX) {
+    let any = 0;
+    for (let i = 0; i < w.length; i++) { w[i] = rnd(); }
+    if (K & 31) w[w.length - 1] &= (1 << (K & 31)) - 1;
+    for (let i = 0; i < w.length; i++) any |= w[i];
+    if (!any) w[0] = 1;
+  } else {
+    for (let n = 0; n < SPARSE_DEG;) {
+      const j = rnd() % K;
+      if (!((w[j >>> 5] >>> (j & 31)) & 1)) { w[j >>> 5] |= (1 << (j & 31)); n++; }
+    }
+  }
+  return w;
 }
 
-function xorInto(dst, src) {
-  for (let i = 0; i < dst.length; i++) dst[i] ^= src[i];
+const pad4 = (n) => (n + 3) & ~3;
+function xorWords(dst, src, from = 0) {
+  for (let i = from; i < dst.length; i++) dst[i] ^= src[i];
 }
 
 // ---------------------------------------------------------------- sender
@@ -160,11 +147,11 @@ export class Encoder {
     this.tid = tid;
     this.streamLen = stream.length;
     this.K = Math.max(1, Math.ceil(stream.length / B));
-    this.blocks = [];
+    this.blocks = [];           // Uint32Array per blokk (polstret til hele ord)
     for (let i = 0; i < this.K; i++) {
-      const blk = new Uint8Array(B);
-      blk.set(stream.subarray(i * B, (i + 1) * B));
-      this.blocks.push(blk);
+      const bytes = new Uint8Array(pad4(B));
+      bytes.set(stream.subarray(i * B, (i + 1) * B));
+      this.blocks.push(new Uint32Array(bytes.buffer));
     }
     this.base = base;
     this.count = 0;
@@ -173,26 +160,37 @@ export class Encoder {
     const i = this.count++;
     if (i < this.K) return this._sym(FLAG_SYSTEMATIC, i, this.blocks[i]);
     const seed = (this.base + i) >>> 0;
-    const payload = new Uint8Array(this.B);
-    for (const j of neighbors(this.K, seed, 0)) xorInto(payload, this.blocks[j]);
-    return this._sym(0, seed, payload);
+    const c = coeffWords(this.K, seed, 0);
+    const acc = new Uint32Array(this.blocks[0].length);
+    for (let wi = 0; wi < c.length; wi++) {
+      let x = c[wi];
+      while (x) {
+        const bit = 31 - Math.clz32(x & -x);
+        x &= x - 1;
+        xorWords(acc, this.blocks[wi * 32 + bit]);
+      }
+    }
+    return this._sym(0, seed, acc);
   }
-  _sym(flags, seed, payload) {
+  _sym(flags, seed, words) {
+    const payload = new Uint8Array(words.buffer, words.byteOffset, this.B);
     return symbolBytes({ flags, tid: this.tid, K: this.K, B: this.B, streamLen: this.streamLen, seed, payload });
   }
 }
 
 // ---------------------------------------------------------------- mottaker
+// Gauss-eliminasjon fortløpende: hver rad er (koeffisienter, data). blocks[i] er raden som har
+// blokk i som laveste ukjente. Når alle K plassene er fylt, løses resten ved tilbakeinnsetting.
 export class Decoder {
   constructor() { this.reset(); }
   reset() {
     this.tid = null;
     this.K = 0; this.B = 0; this.streamLen = 0;
     this.blocks = null;
-    this.decoded = 0;
+    this.decoded = 0;       // rang: antall uavhengige ligninger
     this.seen = new Set();
-    this.waiters = new Map();
     this.symbols = 0;
+    this.solved = false;
   }
   get complete() { return this.K > 0 && this.decoded === this.K; }
 
@@ -208,59 +206,50 @@ export class Decoder {
     if (this.complete) return 'done';
     const key = sym.flags + ':' + sym.seed;
     if (this.seen.has(key)) return 'dup';
+    const c = coeffWords(this.K, sym.seed, sym.flags);
+    if (!c) return 'other';
     this.seen.add(key);
     this.symbols++;
-
-    const nb = new Set(neighbors(this.K, sym.seed, sym.flags));
-    const data = sym.payload.slice();
-    for (const j of [...nb]) {
-      if (this.blocks[j]) { xorInto(data, this.blocks[j]); nb.delete(j); }
-    }
-    if (nb.size === 0) return 'redundant';
-    if (nb.size === 1) {
-      this._solve([...nb][0], data);
-    } else {
-      const ref = { nb, data, done: false };
-      for (const j of nb) {
-        if (!this.waiters.has(j)) this.waiters.set(j, []);
-        this.waiters.get(j).push(ref);
+    const bytes = new Uint8Array(pad4(this.B));
+    bytes.set(sym.payload);
+    const d = new Uint32Array(bytes.buffer);
+    for (let wi = 0; wi < c.length; wi++) {
+      while (c[wi]) {
+        const i = wi * 32 + (31 - Math.clz32(c[wi] & -c[wi]));
+        const piv = this.blocks[i];
+        if (!piv) {
+          this.blocks[i] = { c, d };
+          this.decoded++;
+          if (this.complete) this._backSubstitute();
+          return 'new';
+        }
+        xorWords(c, piv.c, wi);
+        xorWords(d, piv.d);
       }
     }
-    return 'new';
+    return 'redundant';
   }
 
-  // Peeling: en blokk er kjent -> trekk den ut av alle symboler som venter på den.
-  _solve(j, data) {
-    this.blocks[j] = data;
-    this.decoded++;
-    const queue = [j];
-    while (queue.length) {
-      const idx = queue.pop();
-      const list = this.waiters.get(idx) || [];
-      this.waiters.delete(idx);
-      for (const ref of list) {
-        if (ref.done || !ref.nb.has(idx)) continue;
-        xorInto(ref.data, this.blocks[idx]);
-        ref.nb.delete(idx);
-        if (ref.nb.size === 1) {
-          const [k] = ref.nb;
-          ref.nb.delete(k);
-          ref.done = true;
-          if (!this.blocks[k]) {
-            this.blocks[k] = ref.data;
-            this.decoded++;
-            queue.push(k);
-          }
-        } else if (ref.nb.size === 0) {
-          ref.done = true;
+  _backSubstitute() {
+    for (let i = this.K - 1; i >= 0; i--) {
+      const row = this.blocks[i];
+      for (let wi = i >>> 5; wi < row.c.length; wi++) {
+        let x = row.c[wi];
+        while (x) {
+          const j = wi * 32 + (31 - Math.clz32(x & -x));
+          x &= x - 1;
+          if (j !== i) xorWords(row.d, this.blocks[j].d);
         }
       }
+      row.c.fill(0);
+      row.c[i >>> 5] = (1 << (i & 31)) >>> 0;
     }
+    this.solved = true;
   }
 
   assemble() {
     const out = new Uint8Array(this.K * this.B);
-    this.blocks.forEach((b, i) => out.set(b, i * this.B));
+    this.blocks.forEach((row, i) => out.set(new Uint8Array(row.d.buffer, 0, this.B), i * this.B));
     return parseStreamBytes(out.subarray(0, this.streamLen));
   }
 }

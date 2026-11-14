@@ -53,13 +53,13 @@
         </label>
         <label>Modus
           <select id="opt-mode">
-            <option value="qr" selected>QR-koder (pakker)</option>
-            <option value="grid">Fargerutenett</option>
+            <option value="grid" selected>Fargerutenett (raskest)</option>
+            <option value="qr">QR-koder (tregere, mest robust)</option>
           </select>
         </label>
       </div>
 
-      <div id="qr-opts" class="grid">
+      <div id="qr-opts" class="grid" hidden>
         <label>QR-koder per pakke
           <input type="number" id="opt-perpacket" value="10" min="1" max="30">
         </label>
@@ -78,18 +78,26 @@
         </label>
       </div>
 
-      <div id="grid-opts" class="grid" hidden>
+      <div id="grid-opts" class="grid">
+        <label>Forhåndsvalg
+          <select id="opt-preset">
+            <option value="safe">Trygg: 40×40, 4 farger, 10 bilder/s</option>
+            <option value="fast" selected>Rask: 96×96, 8 farger, 12 bilder/s (1 MB på under 1 min)</option>
+            <option value="max">Maks: 120×120, 8 farger, 15 bilder/s</option>
+            <option value="custom">Egendefinert</option>
+          </select>
+        </label>
         <label>Rutenett (celler per side)
-          <input type="number" id="opt-g" value="40" min="8" max="120">
+          <input type="number" id="opt-g" value="96" min="24" max="160">
         </label>
         <label>Farger
           <select id="opt-p">
-            <option value="4" selected>4 farger (2 bit per celle)</option>
-            <option value="8">8 farger (3 bit per celle)</option>
+            <option value="4">4 farger (2 bit per celle)</option>
+            <option value="8" selected>8 farger (3 bit per celle)</option>
           </select>
         </label>
         <label>Bilder per sekund
-          <input type="number" id="opt-fps" value="10" min="1" max="30" step="1">
+          <input type="number" id="opt-fps" value="12" min="1" max="30" step="1">
         </label>
       </div>
 
@@ -130,13 +138,13 @@
         <button id="btn-reset">Nullstill</button>
       </div>
       <div class="grid recv-grid">
-        <label>Rutenett (må stemme med avsenderen)
-          <input type="number" id="opt-rg" value="40" min="8" max="120">
+        <label>Rutenett (finnes av seg selv for forhåndsvalgene)
+          <input type="number" id="opt-rg" value="96" min="24" max="160">
         </label>
-        <label>Farger (må stemme med avsenderen)
+        <label>Farger
           <select id="opt-rp">
-            <option value="4" selected>4 farger</option>
-            <option value="8">8 farger</option>
+            <option value="4">4 farger</option>
+            <option value="8" selected>8 farger</option>
           </select>
         </label>
       </div>
@@ -165,7 +173,7 @@
     </section>
 
     <section class="card help muted">
-      <p>Mottakeren leser både QR-koder og fargerutenett, så du trenger ikke velge modus. Rutenett og farger må stemme med det avsenderen bruker. Holder du kameraet stødig og litt nærmere skjermen, går det raskere.</p>
+      <p>Mottakeren leser både QR-koder og fargerutenett, så du trenger ikke velge modus. Rutenettet finner den selv for forhåndsvalgene. Med egendefinert rutenett må feltene over stemme med avsenderen. For høy fart: bruk bakkameraet, hold mobilene stødig, og la avsenderens rutenett fylle mest mulig av kamerabildet.</p>
     </section>
   </main>
 

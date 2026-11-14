@@ -1,27 +1,29 @@
-# QR-overføring 4 (fontene-koder, fargerutenett)
+# QR-overføring 4 (fontene-kode, fargerutenett, feilretting)
 
-Bygget på versjon 1 (`../qrsend`). Avsenderen sender symboler kontinuerlig, og mottakeren
-trenger bare nok symboler. Tapte bilder gjør ikke noe: de bare forlenger overføringen.
+Bygget på versjon 1 (`../qrsend`). Enveis: avsenderen sender symboler helt til den stoppes, og
+mottakeren trenger bare nok symboler. Tapte bilder forlenger bare overføringen.
 
-## Symboler (`protocol.js`)
-Strømmen `[u16 metaLen][meta JSON][bildefil]` deles i K blokker på B byte. Hvert symbol er en XOR av
-noen blokker (LT-koder med robust soliton-fordeling). De K første symbolene er systematiske
-(én blokk hver), deretter tilfeldige. Mottakeren bruker peeling-dekoding og er ferdig når alle K blokker er kjent.
+## Fontene-kode (`protocol.js`)
+Strømmen `[u16 metaLen][meta JSON][fil]` deles i K blokker på B byte. De K første symbolene er
+systematiske (én blokk hver). Deretter er hvert symbol en XOR av et tilfeldig utvalg blokker
+(tilfeldig lineær kode over GF(2): hver blokk med sannsynlighet 1/2 opp til 1024 blokker, ellers 512
+tilfeldige blokker). Mottakeren løser ligningene fortløpende med Gauss-eliminasjon.
+Målt: 0–4 symboler mer enn K, uansett tap (0–50 %).
 
-Symbolet er 22 byte overhead + B: magic, flagg, overførings-id, K, B, streamLen, seed, nyttelast og CRC-32.
+Symbol = 22 byte overhead + B: magic, flagg, overførings-id, K, B, streamLen, seed, nyttelast, CRC-32.
 
-## To modi (avsender)
-- **QR-koder**: 10 QR-koder per pakke (standard), byte per symbol 380, bytt pakke hvert 300 ms.
-- **Fargerutenett**: G×G celler (standard 40), 4 eller 8 farger (2 eller 3 bit per celle), 10 bilder/s.
-  Rammen og paletteremsen gjør det mulig å kalibrere farger og finne hjørnene. Homografi gir tåleevne mot rotasjon og perspektiv.
+## Fargerutenett (`grid.js`, `rs.js`)
+G×G celler med 4 eller 8 farger (hjørnene i RGB-kuben), svart ramme og en paletteremse som
+kalibrerer fargene i hvert bilde. Mottakeren finner rammens fire hjørner og bruker en homografi,
+så rotasjon og perspektiv tåles. Hvert bilde er beskyttet med Reed-Solomon (32 paritetsbyte per
+255, flettet), som retter inntil 16 feilleste byte per kodeord.
 
-## Mottaker
-Leser QR-koder og fargerutenett samtidig, i egne arbeidstråder (`decoder-worker.js` og `grid-worker.js`).
-Fargerutenettet må ha samme G og antall farger som avsenderen (innstilles i mottakerens skjema).
-Prosent overført er blokker mottatt / K. MB/s er nyttig data per sekund.
+Forhåndsvalg: Trygg 40×40/4 farger/10 bilder/s · Rask 96×96/8/12 (2986 byte per bilde, 35 kB/s brutto)
+· Maks 120×120/8/15 (4674 byte per bilde, 68 kB/s brutto). Mottakeren finner selv hvilket som brukes.
 
-## Test
-- Fontene-koden: ingen tap gir K symboler, 10 % tap gir ca. 1,2×K, 40 % tap gir ca. 2,2×K.
-- Fargerutenett i Chromium: eksakt avlesing med skalering 0,45–1, rotasjon ±0,05 rad, uskarphet og støy.
-- Ende-til-ende med simulert kamera (skjermbilder, 20 % droppede bilder): QR og fargerutenett kommer fram med kontrollsum OK.
-- Ikke testet på ekte telefon eller webkamera.
+## QR-modus
+Samme fontene-kode i QR-koder (10 per pakke). Tregere, men leses av enklere kameraer.
+
+## Målt i simulering (Chromium, ikke ekte kamera)
+1 MB, 1080p-kamera, 20 % tapte bilder, litt uskarpt og vridd: Rask 44 s, Maks 29 s.
+Ikke testet på ekte mobiler.

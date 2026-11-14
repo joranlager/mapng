@@ -2,7 +2,8 @@ import qrcode from './vendor/qrcode.mjs';
 import {
   buildStreamBytes, parseStreamBytes, Encoder, Decoder, parseSymbol, OVERHEAD, bytesToBinaryString,
 } from './protocol.js';
-import { renderGrid, decodeGrid, gridCapacity } from './grid.js';
+import { renderGrid, gridCapacity } from './grid.js';
+import { frameDataCapacity, rsEncodeFrame } from './rs.js';
 
 const $ = (id) => document.getElementById(id);
 const fmtBytes = (n) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} kB` : `${(n / 1048576).toFixed(2)} MB`);
@@ -51,9 +52,9 @@ let payloadBytes = null, payloadType = '', payloadName = '', prepareToken = 0;
 const opt = {
   format: $('opt-format'), maxSide: $('opt-maxside'), quality: $('opt-quality'),
   mode: $('opt-mode'), perPacket: $('opt-perpacket'), chunk: $('opt-chunk'), interval: $('opt-interval'), ecc: $('opt-ecc'),
-  g: $('opt-g'), p: $('opt-p'), fps: $('opt-fps'),
+  g: $('opt-g'), p: $('opt-p'), fps: $('opt-fps'), preset: $('opt-preset'),
 };
-const SETTINGS_KEY = 'qrsend4-opts';
+const SETTINGS_KEY = 'qrsend4-opts2';
 
 function loadSettings() {
   try {
@@ -70,6 +71,21 @@ function saveSettings() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
   } catch {}
 }
+// Forhåndsvalg for fargerutenettet: [celler per side, farger, bilder per sekund]
+const PRESETS = { safe: [40, 4, 10], fast: [96, 8, 12], max: [120, 8, 15] };
+// Rutenett mottakeren prøver av seg selv (i tillegg til det som står i feltene).
+const GRID_CANDIDATES = [[96, 8], [40, 4], [120, 8], [64, 8], [64, 4], [40, 8], [96, 4]];
+function applyPreset() {
+  const pr = PRESETS[opt.preset.value];
+  if (!pr) return;
+  opt.g.value = pr[0]; opt.p.value = pr[1]; opt.fps.value = pr[2];
+}
+const gridParams = () => {
+  const G = Math.max(24, Math.min(160, +opt.g.value || 96)), P = opt.p.value === '4' ? 4 : 8;
+  const cap = gridCapacity(G, P);
+  return { G, P, cap, B: frameDataCapacity(cap) - OVERHEAD };
+};
+
 function showModeOptions() {
   const grid = opt.mode.value === 'grid';
   $('qr-opts').hidden = grid;
@@ -82,7 +98,9 @@ $('file').addEventListener('change', (e) => {
   prepare();
 });
 for (const k of ['format', 'maxSide', 'quality']) opt[k].addEventListener('input', () => { saveSettings(); prepare(); });
-for (const k of ['perPacket', 'chunk', 'interval', 'ecc', 'g', 'p', 'fps']) opt[k].addEventListener('input', () => { saveSettings(); updateEstimate(); });
+for (const k of ['perPacket', 'chunk', 'interval', 'ecc']) opt[k].addEventListener('input', () => { saveSettings(); updateEstimate(); });
+for (const k of ['g', 'p', 'fps']) opt[k].addEventListener('input', () => { opt.preset.value = 'custom'; saveSettings(); updateEstimate(); });
+opt.preset.addEventListener('change', () => { applyPreset(); saveSettings(); updateEstimate(); });
 opt.mode.addEventListener('change', () => { saveSettings(); showModeOptions(); updateEstimate(); });
 opt.quality.addEventListener('input', () => ($('out-quality').textContent = opt.quality.value));
 
@@ -144,10 +162,7 @@ async function prepare() {
 
 // Nyttelast per symbol i valgt modus (byte).
 function currentSymbolPayload() {
-  if (opt.mode.value === 'grid') {
-    const G = Math.max(8, Math.min(120, +opt.g.value || 40)), P = opt.p.value === '8' ? 8 : 4;
-    return { B: gridCapacity(G, P) - OVERHEAD, G, P };
-  }
+  if (opt.mode.value === 'grid') return gridParams();
   return { B: Math.max(50, +opt.chunk.value || 380) };
 }
 
@@ -158,10 +173,12 @@ function updateEstimate() {
   const K = Math.max(1, Math.ceil(streamLen / B));
   let text;
   if (opt.mode.value === 'grid') {
-    const fps = Math.max(1, Math.min(30, +opt.fps.value || 10));
-    const perSec = fps * B;
-    text = `${K} symboler à ${B} byte. ${fps} bilder/s gir ca. ${fmtBytes(Math.round(perSec))}/s. ` +
-      `Ca. ${fmtTime((K * 1.25) / fps)} til alt er mottatt (med tap og overhead).`;
+    const fps = Math.max(1, Math.min(30, +opt.fps.value || 12));
+    if (B < 16) { $('estimate').textContent = 'Rutenettet er for lite til feilretting. Velg flere celler.'; $('btn-start').disabled = true; return; }
+    const { G, P } = gridParams();
+    const t = (share) => fmtTime((K * 1.1) / (fps * share));
+    text = `${G}×${G} celler, ${P} farger: ${B} byte per bilde, ${K} blokker. ${fps} bilder/s gir ${fmtBytes(Math.round(fps * B))}/s brutto. ` +
+      `Tid for denne filen: ca. ${t(1)} hvis mottakeren leser alle bildene, ${t(0.6)} ved 60 %, ${t(0.3)} ved 30 %.`;
   } else {
     const per = Math.max(1, +opt.perPacket.value || 10);
     const interval = Math.max(30, +opt.interval.value || 300);
@@ -252,27 +269,36 @@ function tick() {
     drawFrame();
     tx.timer = setTimeout(tick, tx.interval);
   } else {
-    tx.lastSym = tx.enc.next();
-    drawFrame();
-    tx.timer = setTimeout(tick, 1000 / tx.fps);
+    tx.nextAt = 0;
+    requestAnimationFrame(gridLoop);
   }
+}
+
+// Fargerutenettet byttes i takt med skjermens oppfriskning, så hvert bilde står stille like lenge.
+function gridLoop(ts) {
+  if (!tx.playing || tx.mode !== 'grid' || tx.paused) return;
+  if (ts >= tx.nextAt) {
+    tx.nextAt = Math.max(tx.nextAt + 1000 / tx.fps, ts);
+    tx.lastSym = rsEncodeFrame(tx.enc.next(), tx.cap);
+    drawFrame();
+  }
+  requestAnimationFrame(gridLoop);
 }
 
 function startPlayer() {
   if (!payloadBytes) return;
   tx.mode = opt.mode.value === 'grid' ? 'grid' : 'qr';
   if (tx.mode === 'grid') {
-    tx.G = Math.max(8, Math.min(120, +opt.g.value || 40));
-    tx.P = opt.p.value === '8' ? 8 : 4;
-    tx.fps = Math.max(1, Math.min(30, +opt.fps.value || 10));
-    tx.B = gridCapacity(tx.G, tx.P) - OVERHEAD;
+    const gp = gridParams();
+    tx.G = gp.G; tx.P = gp.P; tx.cap = gp.cap; tx.B = gp.B;
+    tx.fps = Math.max(1, Math.min(30, +opt.fps.value || 12));
   } else {
     tx.perPacket = Math.max(1, +opt.perPacket.value || 10);
     tx.interval = Math.max(30, +opt.interval.value || 300);
     tx.ecc = opt.ecc.value;
     tx.B = Math.max(50, +opt.chunk.value || 380);
   }
-  if (tx.B < 16) { alert('For liten bildeflate for valgt rutenett.'); return; }
+  if (tx.B < 16) { alert('Rutenettet er for lite. Velg flere celler.'); return; }
   const tid = crypto.getRandomValues(new Uint32Array(1))[0] >>> 0;
   tx.enc = new Encoder(buildStreamBytes(payloadBytes, { name: payloadName, type: payloadType }), tx.B, tid);
   tx.lastQr = []; tx.lastSym = null;
@@ -329,7 +355,8 @@ document.addEventListener('keydown', (e) => {
 const video = $('video');
 let stream = null, cameraOn = false;
 let dec = new Decoder();
-let tStart = 0, tEnd = 0, symQr = 0, symGrid = 0, gridFound = 0, gridSeen = 0;
+let tStart = 0, tEnd = 0, symQr = 0, symGrid = 0, gridFound = 0, gridSeen = 0, gridFixed = 0;
+let gridLock = null, gridLastOk = 0, gridTry = 0;   // rutenettet avsenderen bruker, når det er funnet
 let fpsT0 = performance.now(), framesDone = 0;
 let workers = [], gridWorkers = [], lastResultUrl = null, resultBlob = null, resultName = '';
 const grab = document.createElement('canvas');
@@ -345,7 +372,7 @@ function initWorkers() {
     w.onerror = (e) => setStatus('Feil i QR-dekoderen: ' + (e.message || e));
     workers.push(w);
   }
-  for (let i = 0; i < Math.max(1, Math.min(2, (navigator.hardwareConcurrency || 2) - 1)); i++) {
+  for (let i = 0; i < Math.max(1, Math.min(3, (navigator.hardwareConcurrency || 2) - 1)); i++) {
     const g = new Worker('grid-worker.js', { type: 'module' });
     g.busy = true;
     g.onmessage = (e) => onGridMessage(g, e.data);
@@ -361,7 +388,15 @@ function onGridMessage(g, msg) {
   if (msg.found) gridFound++;
   if (msg.bytes) {
     const sym = parseSymbol(msg.bytes);
-    if (sym) { symGrid++; onSymbol(sym); }
+    if (sym) {
+      symGrid++; gridFixed += msg.fixed;
+      gridLastOk = performance.now();
+      if (!gridLock || gridLock[0] !== msg.G || gridLock[1] !== msg.P) {
+        gridLock = [msg.G, msg.P];
+        $('opt-rg').value = msg.G; $('opt-rp').value = msg.P;
+      }
+      onSymbol(sym);
+    }
   }
 }
 
@@ -442,7 +477,7 @@ function finish() {
 function recvStatusLine(fps) {
   const parts = [`symboler: ${dec.symbols || 0} (QR ${symQr}, farger ${symGrid})`];
   if (dec.K) parts.push(`dekodet ${dec.decoded}/${dec.K}`);
-  if (gridSeen) parts.push(`rutenett funnet ${gridFound}/${gridSeen}`);
+  if (gridSeen) parts.push(`rutenett funnet ${gridFound}/${gridSeen}` + (gridLock ? ` (${gridLock[0]}×${gridLock[0]}, ${gridLock[1]} farger, ${gridFixed} byte rettet)` : ''));
   if (fps != null) parts.push(`${fps.toFixed(1)} bilder/s · kamera ${video.videoWidth}×${video.videoHeight}`);
   return parts.join(' · ');
 }
@@ -462,19 +497,25 @@ function pump() {
       gctx.drawImage(video, 0, 0, vw, vh);
       const img = gctx.getImageData(0, 0, vw, vh);
       // Både QR-koder og fargerutenett leses i arbeidstråder. Hver tråd får sin egen kopi av bildet.
-      const G = Math.max(8, Math.min(120, +$('opt-rg').value || 40));
-      const P = $('opt-rp').value === '8' ? 8 : 4;
-      const gw = gridWorkers.find((x) => !x.busy);
-      if (gw) {
-        const copy = new Uint8ClampedArray(img.data);
-        gw.busy = true; gridSeen++;
-        gw.postMessage({ width: vw, height: vh, buffer: copy.buffer, G, P }, [copy.buffer]);
+      // Rutenettet: bruk det som sist ga et gyldig bilde. Ellers prøves feltene og de vanlige valgene etter tur.
+      let G, P;
+      if (gridLock && now - gridLastOk < 1500) [G, P] = gridLock;
+      else {
+        const own = [Math.max(24, Math.min(160, +$('opt-rg').value || 96)), $('opt-rp').value === '4' ? 4 : 8];
+        const list = [own, ...GRID_CANDIDATES.filter(([g, p]) => g !== own[0] || p !== own[1])];
+        [G, P] = list[gridTry++ % list.length];
       }
-      const w = workers.find((x) => !x.busy);
+      const gw = gridWorkers.find((x) => !x.busy);
+      // QR-lesingen er tung. Den hviler mens fargerutenettet leverer symboler.
+      const w = now - gridLastOk < 1500 ? null : workers.find((x) => !x.busy);
+      if (gw) {
+        const buf = w ? new Uint8ClampedArray(img.data).buffer : img.data.buffer;
+        gw.busy = true; gridSeen++;
+        gw.postMessage({ width: vw, height: vh, buffer: buf, G, P }, [buf]);
+      }
       if (w) {
-        const copy = new Uint8ClampedArray(img.data);
         w.busy = true;
-        w.postMessage({ width: vw, height: vh, buffer: copy.buffer }, [copy.buffer]);
+        w.postMessage({ width: vw, height: vh, buffer: img.data.buffer }, [img.data.buffer]);
       }
     }
   }
@@ -543,7 +584,7 @@ function stopCamera() {
 
 function resetReceiver() {
   dec = new Decoder();
-  tStart = 0; tEnd = 0; symQr = 0; symGrid = 0; gridFound = 0; gridSeen = 0;
+  tStart = 0; tEnd = 0; symQr = 0; symGrid = 0; gridFound = 0; gridSeen = 0; gridFixed = 0; gridLock = null; gridLastOk = 0;
   $('result').hidden = true;
   updateProgressText();
   drawChunkMap();
