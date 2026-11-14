@@ -702,190 +702,288 @@
         </div>
     </nav>
 
-    <!-- ================= DEDICATED ONECHAT SNAPCHAT-STYLE OVERLAY TAB ================= -->
-    <section id="onechat-overlay" class="hidden fixed inset-x-0 top-14 bottom-16 lg:bottom-3 z-30 flex items-center justify-center p-0 sm:p-3 pointer-events-none">
-        <div class="w-full max-w-5xl h-full bg-[#0b0e17]/95 backdrop-blur-2xl sm:rounded-3xl border border-yellow-400/30 shadow-2xl overflow-hidden flex flex-col pointer-events-auto relative">
+    <!-- ================= DEDICATED ONECHAT SNAPCHAT-STYLE FULLSCREEN VIEW ================= -->
+    <section id="onechat-overlay" class="hidden fixed inset-0 w-screen h-[100dvh] z-[60] bg-[#06080f] flex flex-col overflow-hidden select-none">
 
-            <!-- LOCKED GATE OVERLAY (Shown if P2P tunnel between OneGiver and OneReceiver is not active yet) -->
-            <div id="onechat-locked-gate" class="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
-                <div class="w-20 h-20 rounded-3xl bg-yellow-400/15 border-2 border-yellow-400/50 flex items-center justify-center text-yellow-400 text-4xl mb-4 shadow-lg shadow-yellow-500/10 animate-bounce">
-                    <i class="fa-solid fa-ghost"></i>
+        <!-- LOCKED GATE OVERLAY (Shown if P2P tunnel between OneGiver and OneReceiver is not active yet) -->
+        <div id="onechat-locked-gate" class="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
+            <div class="w-20 h-20 rounded-3xl bg-yellow-400/15 border-2 border-yellow-400/50 flex items-center justify-center text-yellow-400 text-4xl mb-4 shadow-lg shadow-yellow-500/10 animate-bounce">
+                <i class="fa-solid fa-ghost"></i>
+            </div>
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-950/90 border border-rose-500/40 text-rose-300 text-xs font-mono mb-2">
+                <i class="fa-solid fa-lock"></i> Krever Aktiv P2P-Forbindelse
+            </div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">OneChat er låst inntil hull er slått</h2>
+            <p class="text-xs sm:text-sm text-slate-400 max-w-md mt-2 leading-relaxed">
+                Koble sammen <strong class="text-cyan-300">OneGiver</strong> og <strong class="text-emerald-300">OneReceiver</strong> gjennom brannmurene først for å låse opp direkte Snapchat-chat, Bilde-Snaps og P2P Videosamtale.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-3 mt-6">
+                <button onclick="quickConnectForOneChat()" class="min-h-[46px] px-5 py-2.5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-yellow-400/20 transition transform active:scale-95">
+                    <i class="fa-solid fa-bolt"></i> Slå Hull & Koble OneGiver ↔ OneReceiver Nå
+                </button>
+                <button onclick="closeOneChatTab()" class="min-h-[46px] px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm transition">
+                    Tilbake til 3D-Nettverk
+                </button>
+            </div>
+        </div>
+
+        <!-- TOP MINIMAL FLOATING BAR: HAMBURGER MENU (TOP-LEFT), PEER PILL (CENTER), SETTINGS GEAR (TOP-RIGHT) -->
+        <div class="absolute top-0 left-0 right-0 z-40 px-4 py-3 flex items-center justify-between pointer-events-none">
+            <!-- Top-Left: Hamburger Menu Button -->
+            <button onclick="toggleOneChatHamburgerMenu()" class="w-11 h-11 rounded-2xl bg-black/65 hover:bg-black/85 backdrop-blur-xl border border-white/15 text-white flex items-center justify-center shadow-xl pointer-events-auto transition active:scale-95" title="Meny">
+                <i class="fa-solid fa-bars text-lg"></i>
+            </button>
+
+            <!-- Center: Compact Snapchat Peer Pill & Call Buttons -->
+            <div class="flex items-center gap-2 bg-black/65 backdrop-blur-xl border border-white/15 px-3 py-1.5 rounded-full shadow-xl pointer-events-auto">
+                <div class="relative">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-amber-500 to-emerald-400 p-0.5">
+                        <div class="w-full h-full rounded-full bg-slate-950 flex items-center justify-center text-yellow-300 text-xs">
+                            <i class="fa-solid fa-ghost"></i>
+                        </div>
+                    </div>
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 border border-slate-950 absolute bottom-0 right-0"></span>
                 </div>
-                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-950/90 border border-rose-500/40 text-rose-300 text-xs font-mono mb-2">
-                    <i class="fa-solid fa-lock"></i> Krever Aktiv P2P-Forbindelse
+                <div class="pr-1">
+                    <div class="flex items-center gap-1.5">
+                        <span id="onechat-peer-title" class="font-extrabold text-xs sm:text-sm text-white">OneReceiver</span>
+                        <span id="onechat-call-timer" class="hidden px-2 py-0.5 rounded-full bg-rose-600 text-white font-mono text-[10px] font-bold">00:00</span>
+                    </div>
+                    <p id="onechat-role-subtitle" class="text-[10px] text-slate-300 leading-none">Du er <strong class="text-cyan-300">OneGiver</strong></p>
                 </div>
-                <h2 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">OneChat er låst inntil hull er slått</h2>
-                <p class="text-xs sm:text-sm text-slate-400 max-w-md mt-2 leading-relaxed">
-                    Koble sammen <strong class="text-cyan-300">OneGiver</strong> og <strong class="text-emerald-300">OneReceiver</strong> gjennom brannmurene først for å låse opp direkte Snapchat-chat, Bilde-Snaps og P2P Videosamtale.
-                </p>
-                <div class="flex flex-wrap items-center justify-center gap-3 mt-6">
-                    <button onclick="quickConnectForOneChat()" class="min-h-[46px] px-5 py-2.5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-yellow-400/20 transition transform active:scale-95">
-                        <i class="fa-solid fa-bolt"></i> Slå Hull & Koble OneGiver ↔ OneReceiver Nå
-                    </button>
-                    <button onclick="closeOneChatTab()" class="min-h-[46px] px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm transition">
-                        Tilbake til 3D-Nettverk
-                    </button>
+                <button onclick="startOneChatCall(false)" id="btn-onechat-audiocall" class="w-8 h-8 rounded-full bg-slate-800/90 hover:bg-slate-700 text-cyan-300 flex items-center justify-center text-xs transition" title="Start P2P Lydsamtale">
+                    <i class="fa-solid fa-phone"></i>
+                </button>
+                <button onclick="startOneChatCall(true)" id="btn-onechat-videocall" class="px-3 h-8 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow transition" title="Start P2P Videosamtale">
+                    <i class="fa-solid fa-video"></i>
+                    <span class="hidden sm:inline">Videosamtale</span>
+                </button>
+            </div>
+
+            <!-- Top-Right: OneChat Settings Gear Button -->
+            <button onclick="toggleOneChatSettingsModal()" class="w-11 h-11 rounded-2xl bg-black/65 hover:bg-black/85 backdrop-blur-xl border border-white/15 text-yellow-300 flex items-center justify-center shadow-xl pointer-events-auto transition active:scale-95" title="OneChat Innstillinger">
+                <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+        </div>
+
+        <!-- HAMBURGER SLIDE-OUT DRAWER (TOP-LEFT) -->
+        <div id="onechat-hamburger-drawer" class="hidden absolute top-16 left-4 z-50 w-72 rounded-2xl hud-glass border border-white/15 p-3 shadow-2xl space-y-2 text-xs">
+            <div class="px-2 py-1.5 border-b border-slate-800 flex items-center justify-between">
+                <span class="font-extrabold text-yellow-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-ghost"></i> OneChat Navigasjon
+                </span>
+                <button onclick="toggleOneChatHamburgerMenu()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <button onclick="toggleOneChatHamburgerMenu(); closeOneChatTab();" class="w-full p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-left flex items-center gap-2.5 text-cyan-300 font-semibold transition">
+                <i class="fa-solid fa-cubes text-base w-5 text-center"></i>
+                <div>
+                    <div>Tilbake til 3D-Nettverk</div>
+                    <div class="text-[10px] text-slate-400 font-normal">Se brannmurer og UDP-pakker i 3D</div>
+                </div>
+            </button>
+
+            <button onclick="toggleOneChatHamburgerMenu(); swapOneChatPipView();" class="w-full p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-left flex items-center gap-2.5 text-emerald-300 font-semibold transition">
+                <i class="fa-solid fa-right-left text-base w-5 text-center"></i>
+                <div>
+                    <div>Bytt Stort / Lite Kameravindu</div>
+                    <div class="text-[10px] text-slate-400 font-normal">Veksle mellom eget kamera og motpart</div>
+                </div>
+            </button>
+
+            <button onclick="toggleOneChatHamburgerMenu(); clearOneChatFeed();" class="w-full p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-left flex items-center gap-2.5 text-rose-300 font-semibold transition">
+                <i class="fa-solid fa-broom text-base w-5 text-center"></i>
+                <div>
+                    <div>Tøm OneChat-historikk</div>
+                    <div class="text-[10px] text-slate-400 font-normal">Slett alle viste meldinger og Snaps</div>
+                </div>
+            </button>
+        </div>
+
+        <!-- ONECHAT SETTINGS MODAL (TOP-RIGHT GEAR) -->
+        <div id="onechat-settings-drawer" class="hidden absolute top-16 right-4 z-50 w-80 rounded-2xl hud-glass border border-yellow-400/30 p-4 shadow-2xl space-y-3.5 text-xs">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-yellow-400"></i>
+                    <span class="font-extrabold text-white text-sm">OneChat Innstillinger</span>
+                </div>
+                <button onclick="toggleOneChatSettingsModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Ephemeral Timer Setting -->
+            <div class="space-y-1">
+                <label class="flex items-center justify-between text-slate-200 font-semibold cursor-pointer">
+                    <span>Selvdestruerende Snaps & Chat</span>
+                    <input id="onechat-ephemeral-toggle" type="checkbox" checked class="w-4 h-4 rounded border-slate-700 text-yellow-400 focus:ring-0">
+                </label>
+                <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                    <span>Visningstid før utløp:</span>
+                    <select id="onechat-snap-duration" onchange="updateOneChatSettings()" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-yellow-300 font-mono text-[11px]">
+                        <option value="5">5 sekunder</option>
+                        <option value="10" selected>10 sekunder</option>
+                        <option value="30">30 sekunder</option>
+                    </select>
                 </div>
             </div>
 
-            <!-- ONECHAT TOP HEADER (Snapchat Style) -->
-            <div class="px-4 py-3 bg-slate-900/95 border-b border-slate-800/90 flex items-center justify-between gap-2 shrink-0">
-                <div class="flex items-center gap-3 min-w-0">
-                    <!-- Avatar / Bitmoji Badge -->
-                    <div class="relative">
-                        <div id="onechat-peer-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 via-amber-500 to-emerald-400 p-0.5 shadow-md">
-                            <div class="w-full h-full rounded-full bg-slate-950 flex items-center justify-center text-yellow-300 font-bold text-base">
-                                <i class="fa-solid fa-user-astronaut"></i>
-                            </div>
-                        </div>
-                        <span class="w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-950 absolute bottom-0 right-0"></span>
-                    </div>
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2">
-                            <h3 id="onechat-peer-title" class="font-extrabold text-sm sm:text-base text-white truncate">OneReceiver</h3>
-                            <span class="px-2 py-0.5 rounded-full bg-yellow-400/15 border border-yellow-400/40 text-yellow-300 font-mono text-[10px] font-bold">🔥 100% P2P</span>
-                        </div>
-                        <p id="onechat-role-subtitle" class="text-[11px] text-slate-400 truncate">Du er <strong class="text-cyan-300">OneGiver</strong> • Direkte kryptert UDP-tunnel</p>
-                    </div>
-                </div>
-
-                <!-- Snapchat Action Pills (Audio Call, Video Call, Snap Camera, Close) -->
-                <div class="flex items-center gap-1.5 sm:gap-2">
-                    <button onclick="startOneChatCall(false)" id="btn-onechat-audiocall" class="min-h-[40px] px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition" title="Start P2P Lydsamtale">
-                        <i class="fa-solid fa-phone"></i>
-                        <span class="hidden sm:inline">Lyd</span>
-                    </button>
-                    <button onclick="startOneChatCall(true)" id="btn-onechat-videocall" class="min-h-[40px] px-3.5 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition" title="Start P2P Videosamtale">
-                        <i class="fa-solid fa-video"></i>
-                        <span>Videosamtale</span>
-                    </button>
-                    <button onclick="closeOneChatTab()" class="min-w-[38px] min-h-[38px] rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition" title="Lukk OneChat">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
+            <!-- Video Stream Quality & FPS -->
+            <div class="space-y-1 pt-2 border-t border-slate-800/80">
+                <label class="text-slate-200 font-semibold block">P2P Videostrøm-kvalitet:</label>
+                <select id="onechat-video-quality" onchange="updateOneChatSettings()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-cyan-300 font-medium">
+                    <option value="high">HD Lav Latens (WebRTC RTP + Høy FPS)</option>
+                    <option value="balanced" selected>Balansert P2P (WebRTC + Auto DataChannel Stream)</option>
+                    <option value="low">Lav Båndbredde (Komprimert UDP-strøm)</option>
+                </select>
             </div>
 
-            <!-- MAIN ONECHAT BODY: SPLIT INTO SNAP CAMERA / VIDEO STAGE (LEFT) & SNAPCHAT FEED (RIGHT) -->
-            <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+            <!-- Mirror Local Camera & Show Telemetry -->
+            <div class="space-y-2 pt-2 border-t border-slate-800/80">
+                <label class="flex items-center justify-between text-slate-300 cursor-pointer">
+                    <span>Speilvend eget frontkamera</span>
+                    <input id="onechat-mirror-toggle" type="checkbox" checked onchange="updateOneChatSettings()" class="w-4 h-4 rounded border-slate-700 text-cyan-400">
+                </label>
+                <label class="flex items-center justify-between text-slate-300 cursor-pointer">
+                    <span>Bytt automatisk til motpart ved anrop</span>
+                    <input id="onechat-autoswap-toggle" type="checkbox" checked class="w-4 h-4 rounded border-slate-700 text-emerald-400">
+                </label>
+            </div>
+        </div>
 
-                <!-- LEFT / TOP STAGE: SNAP CAMERA & LIVE P2P VIDEO CALL -->
-                <div id="onechat-media-stage" class="lg:col-span-7 relative bg-black flex flex-col items-center justify-center overflow-hidden min-h-[270px] sm:min-h-[340px]">
-                    <!-- Remote Peer Video / Animated P2P Cyber Feed when Peer has no physical webcam -->
+        <!-- MAIN FULLSCREEN ONECHAT BODY: SPLIT INTO CAMERA / VIDEO STAGE & SNAPCHAT FEED -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden w-full h-full">
+
+            <!-- LEFT / TOP STAGE: SNAP CAMERA & SWAPPABLE P2P VIDEO CALL -->
+            <div id="onechat-media-stage" class="lg:col-span-8 relative bg-black flex flex-col items-center justify-center overflow-hidden h-full min-h-[54dvh]">
+
+                <!-- REMOTE PEER CONTAINER (Large by default during call, or PiP when swapped!) -->
+                <div id="onechat-remote-container" onclick="onVideoContainerClick('remote')" class="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden transition-all duration-300">
+                    <!-- Real WebRTC MediaStream Video from Peer -->
                     <video id="onechat-remote-video" class="hidden w-full h-full object-cover" playsinline autoplay></video>
+                    <!-- Live DataChannel Frame-Stream Image from Peer (Guaranteed P2P Video fallback!) -->
+                    <img id="onechat-remote-stream-img" class="hidden w-full h-full object-cover" alt="Remote P2P Video">
+                    <!-- Animated Cyber Peer Stream when Peer has no physical camera or before call -->
                     <canvas id="onechat-sim-remote-canvas" class="w-full h-full object-cover"></canvas>
 
-                    <!-- Local Camera Preview (Full when snapping, PiP when in video call) -->
-                    <div id="onechat-local-pip" class="absolute inset-0 transition-all duration-300 flex items-center justify-center overflow-hidden">
-                        <video id="onechat-local-video" class="w-full h-full object-cover" playsinline autoplay muted></video>
-                        <canvas id="onechat-snap-canvas" class="hidden"></canvas>
-                    </div>
-
-                    <!-- Snapchat Text Overlay Bar on Camera -->
-                    <div id="onechat-caption-overlay" class="hidden absolute inset-x-0 top-1/2 -translate-y-1/2 bg-black/65 backdrop-blur-sm py-2.5 px-4">
-                        <input id="onechat-snap-caption" type="text" placeholder="Skriv en Snap-tekst..." class="w-full bg-transparent text-center text-white font-bold text-sm sm:text-base focus:outline-none">
-                    </div>
-
-                    <!-- Top Camera Overlay Controls (Lens/Filter, Caption, Switch Camera) -->
-                    <div class="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                        <div class="flex items-center gap-2 pointer-events-auto">
-                            <span id="onechat-call-badge" class="px-3 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-[11px] font-mono text-yellow-300 flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
-                                <span id="onechat-stage-status">Snap-Kamera Klar</span>
-                            </span>
-                            <span id="onechat-call-timer" class="hidden px-2.5 py-1 rounded-full bg-rose-600/90 text-white font-mono text-[11px] font-bold">00:00</span>
-                        </div>
-
-                        <div class="flex items-center gap-1.5 pointer-events-auto">
-                            <button onclick="toggleOneChatCaption()" class="w-9 h-9 rounded-full bg-black/65 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center text-xs font-bold" title="Legg til tekst på Snap">
-                                T
-                            </button>
-                            <button onclick="cycleOneChatFilter()" class="px-2.5 h-9 rounded-full bg-black/65 hover:bg-black/80 text-yellow-300 border border-white/15 flex items-center gap-1 text-[11px] font-semibold" title="Bytt AR/Fargefilter">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                                <span id="onechat-filter-label">Normal</span>
-                            </button>
-                            <button onclick="flipOneChatCamera()" class="w-9 h-9 rounded-full bg-black/65 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center text-xs" title="Snu kamera">
-                                <i class="fa-solid fa-camera-rotate"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Bottom Snapchat Shutter & Call Controls Bar -->
-                    <div class="absolute bottom-3 inset-x-3 flex items-center justify-center gap-3 pointer-events-auto">
-                        <!-- Mute Mic (Active during call) -->
-                        <button id="btn-onechat-mute" onclick="toggleOneChatMute()" class="w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-white flex items-center justify-center transition" title="Demp mikrofon">
-                            <i id="icon-onechat-mute" class="fa-solid fa-microphone text-xs"></i>
-                        </button>
-
-                        <!-- Toggle Camera On/Off -->
-                        <button id="btn-onechat-camtoggle" onclick="toggleOneChatVideo()" class="w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-white flex items-center justify-center transition" title="Kamera av/på">
-                            <i id="icon-onechat-cam" class="fa-solid fa-video text-xs"></i>
-                        </button>
-
-                        <!-- Big Yellow Snapchat Shutter Button (Takes & Sends Instant Snap!) -->
-                        <button onclick="captureAndSendSnap()" class="w-16 h-16 rounded-full border-4 border-yellow-400 bg-yellow-400/20 hover:bg-yellow-400/40 active:scale-90 transition flex items-center justify-center shadow-xl" title="Ta og send Snap (10s selvdestruerende)">
-                            <div class="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center text-slate-950 font-black text-lg">
-                                <i class="fa-solid fa-camera"></i>
-                            </div>
-                        </button>
-
-                        <!-- Send Heart / Bitmoji Reaction -->
-                        <button onclick="sendOneChatReaction('🔥')" class="w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-lg flex items-center justify-center transition" title="Send Snap-Reaksjon">
-                            🔥
-                        </button>
-
-                        <!-- Hangup Call Button (Shown when in active call) -->
-                        <button id="btn-onechat-hangup" onclick="endOneChatCall()" class="hidden px-4 h-10 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg">
-                            <i class="fa-solid fa-phone-slash"></i> Avslutt
-                        </button>
+                    <div id="onechat-remote-label" class="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-[10px] font-mono text-emerald-300 flex items-center gap-1.5 pointer-events-none">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="onechat-remote-label-text">OneReceiver</span>
                     </div>
                 </div>
 
-                <!-- RIGHT / BOTTOM STAGE: SNAPCHAT CONVERSATION FEED (VERTICAL COLORED BARS & EPHEMERAL SNAPS) -->
-                <div class="lg:col-span-5 flex flex-col bg-[#0f1422] border-t lg:border-t-0 lg:border-l border-slate-800/90 h-full overflow-hidden">
-                    <!-- Subheader: Ephemeral Mode Toggle -->
-                    <div class="px-3.5 py-2 bg-slate-900/70 border-b border-slate-800/80 flex items-center justify-between text-[11px]">
-                        <span class="font-bold text-slate-300 flex items-center gap-1.5">
-                            <i class="fa-solid fa-fire-flame-curved text-amber-400"></i>
-                            <span>OneChat Meldinger & Snaps</span>
+                <!-- LOCAL CAMERA CONTAINER (Full when taking Snaps, Small PiP in corner by default during Video Call, Clickable to Swap!) -->
+                <div id="onechat-local-pip" onclick="onVideoContainerClick('local')" class="absolute inset-0 w-full h-full transition-all duration-300 flex items-center justify-center overflow-hidden bg-slate-950">
+                    <video id="onechat-local-video" class="w-full h-full object-cover scale-x-[-1]" playsinline autoplay muted></video>
+                    <canvas id="onechat-snap-canvas" class="hidden"></canvas>
+
+                    <!-- Swap Hint Badge shown on PiP window during call -->
+                    <div id="onechat-pip-swap-badge" class="hidden absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/75 border border-white/20 text-[9px] font-mono text-yellow-300 flex items-center gap-1 shadow">
+                        <i class="fa-solid fa-up-right-and-down-left-from-center"></i> Bytt
+                    </div>
+                    <div id="onechat-local-label" class="hidden absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/75 text-[9px] font-mono text-cyan-300">
+                        Deg (<span id="onechat-local-role-tag">OneGiver</span>)
+                    </div>
+                </div>
+
+                <!-- Snapchat Text Overlay Bar on Camera -->
+                <div id="onechat-caption-overlay" class="hidden absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 bg-black/65 backdrop-blur-sm py-2.5 px-4">
+                    <input id="onechat-snap-caption" type="text" placeholder="Skriv en Snap-tekst..." class="w-full bg-transparent text-center text-white font-bold text-sm sm:text-base focus:outline-none">
+                </div>
+
+                <!-- Floating Camera Tools (Below Top Bar) -->
+                <div class="absolute top-16 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
+                    <div class="flex items-center gap-2 pointer-events-auto">
+                        <span id="onechat-call-badge" class="px-3 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-[11px] font-mono text-yellow-300 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                            <span id="onechat-stage-status">Snap-Kamera Klar</span>
                         </span>
-                        <label class="flex items-center gap-1.5 text-[10px] text-amber-300 cursor-pointer">
-                            <input id="onechat-ephemeral-toggle" type="checkbox" checked class="rounded border-slate-700 text-yellow-400 focus:ring-0">
-                            <span>Utløper etter visning (10s)</span>
-                        </label>
                     </div>
 
-                    <!-- Snapchat Style Message List -->
-                    <div id="onechat-feed" class="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs">
-                        <!-- Initial Snapchat System Card -->
-                        <div class="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 text-center space-y-1">
-                            <div class="text-yellow-400 font-extrabold text-xs">👻 OneGiver & OneReceiver er koblet sammen!</div>
-                            <p class="text-[11px] text-slate-400">Meldinger vises i ekte Snapchat-stil. Trykk på den gule utløserknappen for å sende en Bilde-Snap, eller start en direkte P2P-videosamtale.</p>
-                        </div>
-                    </div>
-
-                    <!-- Quick Reaction Bar -->
-                    <div class="px-3 py-1.5 bg-slate-950/60 border-t border-slate-800/70 flex items-center justify-between text-sm">
-                        <span class="text-[10px] font-mono text-slate-400">Hurtig-Snap:</span>
-                        <div class="flex items-center gap-2">
-                            <button onclick="sendOneChatReaction('👋 Hei fra ' + getRoleName(APP_STATE.role) + '!')" class="hover:scale-125 transition">👋</button>
-                            <button onclick="sendOneChatReaction('⚡ Direkte gjennom brannmuren!')" class="hover:scale-125 transition">⚡</button>
-                            <button onclick="sendOneChatReaction('🔥 Beste P2P-tunnelen!')" class="hover:scale-125 transition">🔥</button>
-                            <button onclick="sendOneChatReaction('🎉 Hull slått uten STUN!')" class="hover:scale-125 transition">🎉</button>
-                        </div>
-                    </div>
-
-                    <!-- Snapchat Pill Input Bar -->
-                    <form onsubmit="handleOneChatSubmit(event)" class="p-2.5 bg-slate-900 border-t border-slate-800 flex items-center gap-2">
-                        <button type="button" onclick="captureAndSendSnap()" class="w-9 h-9 rounded-full bg-yellow-400 hover:bg-yellow-300 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow" title="Send Bilde-Snap">
-                            <i class="fa-solid fa-camera text-xs"></i>
+                    <div class="flex items-center gap-1.5 pointer-events-auto">
+                        <!-- Explicit Swap Main/PiP Video Button during Call -->
+                        <button id="btn-onechat-swap-pip" onclick="swapOneChatPipView()" class="hidden px-3 h-9 rounded-full bg-black/70 hover:bg-black/90 text-cyan-300 border border-cyan-400/40 flex items-center gap-1.5 text-[11px] font-bold shadow" title="Bytt hvem som har stort og lite kameravindu">
+                            <i class="fa-solid fa-right-left"></i>
+                            <span id="onechat-swap-btn-text">Vis meg stort</span>
                         </button>
-                        <input id="onechat-input" type="text" placeholder="Send en chat til motparten..." class="flex-1 min-h-[40px] bg-slate-950 border border-slate-700/90 rounded-full px-4 py-1.5 text-xs text-white focus:border-yellow-400 focus:outline-none">
-                        <button type="submit" class="px-4 min-h-[40px] rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs flex items-center gap-1 shrink-0 transition">
-                            <span>Send</span>
-                            <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                        <button onclick="toggleOneChatCaption()" class="w-9 h-9 rounded-full bg-black/65 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center text-xs font-bold" title="Legg til tekst på Snap">
+                            T
                         </button>
-                    </form>
+                        <button onclick="cycleOneChatFilter()" class="px-2.5 h-9 rounded-full bg-black/65 hover:bg-black/80 text-yellow-300 border border-white/15 flex items-center gap-1 text-[11px] font-semibold" title="Bytt AR/Fargefilter">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span id="onechat-filter-label">Normal</span>
+                        </button>
+                        <button onclick="flipOneChatCamera()" class="w-9 h-9 rounded-full bg-black/65 hover:bg-black/80 text-white border border-white/15 flex items-center justify-center text-xs" title="Snu kamera">
+                            <i class="fa-solid fa-camera-rotate"></i>
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Bottom Snapchat Shutter & Call Controls Bar -->
+                <div class="absolute bottom-4 inset-x-4 z-30 flex items-center justify-center gap-3 pointer-events-auto">
+                    <!-- Mute Mic -->
+                    <button id="btn-onechat-mute" onclick="toggleOneChatMute()" class="w-11 h-11 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-white flex items-center justify-center transition" title="Demp mikrofon">
+                        <i id="icon-onechat-mute" class="fa-solid fa-microphone text-xs"></i>
+                    </button>
+
+                    <!-- Toggle Camera On/Off -->
+                    <button id="btn-onechat-camtoggle" onclick="toggleOneChatVideo()" class="w-11 h-11 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-white flex items-center justify-center transition" title="Kamera av/på">
+                        <i id="icon-onechat-cam" class="fa-solid fa-video text-xs"></i>
+                    </button>
+
+                    <!-- Big Yellow Snapchat Shutter Button (Takes & Sends Instant Snap!) -->
+                    <button onclick="captureAndSendSnap()" class="w-16 h-16 rounded-full border-4 border-yellow-400 bg-yellow-400/20 hover:bg-yellow-400/40 active:scale-90 transition flex items-center justify-center shadow-xl" title="Ta og send Snap">
+                        <div class="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center text-slate-950 font-black text-lg">
+                            <i class="fa-solid fa-camera"></i>
+                        </div>
+                    </button>
+
+                    <!-- Swap PiP Quick Button -->
+                    <button onclick="swapOneChatPipView()" class="w-11 h-11 rounded-full bg-black/70 hover:bg-black/90 border border-white/20 text-cyan-300 flex items-center justify-center transition" title="Bytt mellom eget kamera og motpartens video">
+                        <i class="fa-solid fa-right-left text-xs"></i>
+                    </button>
+
+                    <!-- Hangup Call Button (Shown when in active call) -->
+                    <button id="btn-onechat-hangup" onclick="endOneChatCall()" class="hidden px-4 h-11 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg">
+                        <i class="fa-solid fa-phone-slash"></i> Avslutt
+                    </button>
+                </div>
+            </div>
+
+            <!-- RIGHT / BOTTOM STAGE: SNAPCHAT CONVERSATION FEED -->
+            <div class="lg:col-span-4 flex flex-col bg-[#0c101d] border-t lg:border-t-0 lg:border-l border-slate-800/90 h-full overflow-hidden pt-0 lg:pt-16">
+                <!-- Snapchat Style Message List -->
+                <div id="onechat-feed" class="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs">
+                    <div class="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 text-center space-y-1">
+                        <div class="text-yellow-400 font-extrabold text-xs">👻 OneGiver & OneReceiver Fullskjerm</div>
+                        <p class="text-[11px] text-slate-400">Under videosamtale er eget kamera lite i hjørnet som standard. Trykk på det lille vinduet når som helst for å bytte hvem som er stor og liten!</p>
+                    </div>
+                </div>
+
+                <!-- Quick Reaction Bar -->
+                <div class="px-3 py-1.5 bg-slate-950/60 border-t border-slate-800/70 flex items-center justify-between text-sm">
+                    <span class="text-[10px] font-mono text-slate-400">Hurtig-Snap:</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="sendOneChatReaction('👋 Hei fra ' + getRoleName(APP_STATE.role) + '!')" class="hover:scale-125 transition">👋</button>
+                        <button onclick="sendOneChatReaction('⚡ Direkte gjennom brannmuren!')" class="hover:scale-125 transition">⚡</button>
+                        <button onclick="sendOneChatReaction('🔥 Beste P2P-tunnelen!')" class="hover:scale-125 transition">🔥</button>
+                        <button onclick="sendOneChatReaction('🎉 Videosamtale uten STUN!')" class="hover:scale-125 transition">🎉</button>
+                    </div>
+                </div>
+
+                <!-- Snapchat Pill Input Bar -->
+                <form onsubmit="handleOneChatSubmit(event)" class="p-2.5 bg-slate-900 border-t border-slate-800 flex items-center gap-2">
+                    <button type="button" onclick="captureAndSendSnap()" class="w-9 h-9 rounded-full bg-yellow-400 hover:bg-yellow-300 text-slate-950 flex items-center justify-center shrink-0 font-bold shadow" title="Send Bilde-Snap">
+                        <i class="fa-solid fa-camera text-xs"></i>
+                    </button>
+                    <input id="onechat-input" type="text" placeholder="Send en chat til motparten..." class="flex-1 min-h-[40px] bg-slate-950 border border-slate-700/90 rounded-full px-4 py-1.5 text-xs text-white focus:border-yellow-400 focus:outline-none">
+                    <button type="submit" class="px-4 min-h-[40px] rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs flex items-center gap-1 shrink-0 transition">
+                        <span>Send</span>
+                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                    </button>
+                </form>
             </div>
         </div>
     </section>
@@ -1360,12 +1458,24 @@
             // Support real WebRTC audio/video streams for OneChat Video Call
             pc.ontrack = (event) => {
                 const remoteVideo = document.getElementById('onechat-remote-video');
+                const remoteImg = document.getElementById('onechat-remote-stream-img');
                 const simCanvas = document.getElementById('onechat-sim-remote-canvas');
-                if (remoteVideo && event.streams && event.streams[0]) {
-                    remoteVideo.srcObject = event.streams[0];
+                if (remoteVideo) {
+                    let mediaStream = (event.streams && event.streams[0]) ? event.streams[0] : null;
+                    if (!mediaStream) {
+                        if (!APP_STATE.inboundMediaStream) {
+                            APP_STATE.inboundMediaStream = new MediaStream();
+                        }
+                        APP_STATE.inboundMediaStream.addTrack(event.track);
+                        mediaStream = APP_STATE.inboundMediaStream;
+                    }
+                    remoteVideo.srcObject = mediaStream;
                     remoteVideo.classList.remove('hidden');
+                    remoteVideo.play().catch(() => {});
+                    if (remoteImg) remoteImg.classList.add('hidden');
                     if (simCanvas) simCanvas.classList.add('hidden');
-                    showToast(`Mottar direkte WebRTC video/lyd fra ${getPeerRoleName()}!`, 'success');
+                    ONECHAT_STATE.hasRealRemoteTrack = true;
+                    showToast(`Mottar direkte WebRTC videostrøm fra ${getPeerRoleName()}!`, 'success');
                 }
             };
 
@@ -2606,6 +2716,10 @@ if __name__ == "__main__":
                         appendOneChatSnap(parsed.sender || getPeerRoleName(), parsed.image, parsed.caption, false);
                     } else if (parsed.type === 'ONECHAT_CALL_SIGNAL') {
                         handleIncomingOneChatCallSignal(parsed);
+                    } else if (parsed.type === 'ONECHAT_VIDEO_FRAME') {
+                        renderIncomingPeerVideoFrame(parsed);
+                    } else if (parsed.type === 'ONECHAT_WEBRTC_RENEGOTIATE') {
+                        handleIncomingWebRTCRenegotiation(parsed);
                     } else if (parsed.type === 'PING') {
                         if (APP_STATE.dataChannel && APP_STATE.dataChannel.readyState === 'open') {
                             APP_STATE.dataChannel.send(JSON.stringify({ type: 'PONG', ts: parsed.ts }));
@@ -2647,7 +2761,13 @@ if __name__ == "__main__":
             isVideoCall: true,
             isMuted: false,
             isCameraOff: false,
+            localIsSmallPip: true, // Standard during call: own camera is small PiP, remote peer is large!
+            hasRealRemoteTrack: false,
+            lastFrameReceivedAt: 0,
             facingMode: 'user',
+            snapDurationSec: 10,
+            videoQuality: 'balanced',
+            mirrorLocal: true,
             filterIndex: 0,
             filters: [
                 { name: 'Normal', css: 'none' },
@@ -2658,9 +2778,148 @@ if __name__ == "__main__":
             ],
             callStartTime: 0,
             callTimerInterval: null,
+            videoStreamInterval: null,
             simAnimFrame: null,
             snapViewerInterval: null
         };
+
+        function toggleOneChatHamburgerMenu() {
+            const menu = document.getElementById('onechat-hamburger-drawer');
+            const settings = document.getElementById('onechat-settings-drawer');
+            if (settings) settings.classList.add('hidden');
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        function toggleOneChatSettingsModal() {
+            const settings = document.getElementById('onechat-settings-drawer');
+            const menu = document.getElementById('onechat-hamburger-drawer');
+            if (menu) menu.classList.add('hidden');
+            if (settings) settings.classList.toggle('hidden');
+        }
+
+        function updateOneChatSettings() {
+            const durEl = document.getElementById('onechat-snap-duration');
+            const qualEl = document.getElementById('onechat-video-quality');
+            const mirrorEl = document.getElementById('onechat-mirror-toggle');
+            if (durEl) ONECHAT_STATE.snapDurationSec = parseInt(durEl.value, 10) || 10;
+            if (qualEl) ONECHAT_STATE.videoQuality = qualEl.value;
+            if (mirrorEl) {
+                ONECHAT_STATE.mirrorLocal = mirrorEl.checked;
+                const localVid = document.getElementById('onechat-local-video');
+                if (localVid) {
+                    localVid.style.transform = ONECHAT_STATE.mirrorLocal ? 'scaleX(-1)' : 'scaleX(1)';
+                }
+            }
+            showToast('OneChat-innstillinger oppdatert', 'info');
+        }
+
+        function clearOneChatFeed() {
+            const feed = document.getElementById('onechat-feed');
+            if (feed) {
+                feed.innerHTML = `<div class="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 text-center text-[11px] text-slate-400">OneChat-loggen ble tømt.</div>`;
+            }
+            showToast('OneChat-historikk tømt', 'info');
+        }
+
+        // Apply layout for which video is small PiP in the corner and which is fullscreen
+        function applyOneChatVideoPipLayout() {
+            const localContainer = document.getElementById('onechat-local-pip');
+            const remoteContainer = document.getElementById('onechat-remote-container');
+            const swapBadge = document.getElementById('onechat-pip-swap-badge');
+            const localLabel = document.getElementById('onechat-local-label');
+            const remoteLabelText = document.getElementById('onechat-remote-label-text');
+            const localRoleTag = document.getElementById('onechat-local-role-tag');
+            const swapBtn = document.getElementById('btn-onechat-swap-pip');
+            const swapBtnText = document.getElementById('onechat-swap-btn-text');
+
+            if (remoteLabelText) remoteLabelText.textContent = getPeerRoleName();
+            if (localRoleTag) localRoleTag.textContent = getRoleName(APP_STATE.role);
+
+            const pipClasses = 'absolute bottom-20 right-4 w-28 h-40 sm:w-36 sm:h-52 rounded-2xl border-2 border-yellow-400 shadow-2xl overflow-hidden z-30 transition-all duration-300 bg-slate-950 cursor-pointer hover:scale-105';
+            const fullClasses = 'absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden z-10 transition-all duration-300 bg-black';
+
+            if (!ONECHAT_STATE.inCall) {
+                // Before call: local camera is full stage so user can compose Snaps, remote is behind
+                localContainer.className = fullClasses;
+                remoteContainer.className = 'hidden';
+                if (swapBadge) swapBadge.classList.add('hidden');
+                if (localLabel) localLabel.classList.add('hidden');
+                if (swapBtn) swapBtn.classList.add('hidden');
+                return;
+            }
+
+            if (swapBtn) swapBtn.classList.remove('hidden');
+            if (localLabel) localLabel.classList.remove('hidden');
+            if (swapBadge) swapBadge.classList.remove('hidden');
+
+            if (ONECHAT_STATE.localIsSmallPip) {
+                // Standard during video call: Own camera is small PiP in bottom-right, Remote peer is large!
+                remoteContainer.className = fullClasses;
+                localContainer.className = pipClasses;
+                if (swapBtnText) swapBtnText.textContent = 'Vis meg stort';
+            } else {
+                // Swapped: Own camera is large fullscreen, Remote peer is small PiP in bottom-right!
+                localContainer.className = fullClasses;
+                remoteContainer.className = pipClasses;
+                if (swapBtnText) swapBtnText.textContent = `Vis ${getPeerRoleName()} stort`;
+            }
+        }
+
+        function swapOneChatPipView() {
+            if (!ONECHAT_STATE.inCall) {
+                // If not in call yet, starting swap immediately activates the split PiP view so user can see both
+                ONECHAT_STATE.inCall = true;
+                ONECHAT_STATE.localIsSmallPip = true;
+                applyOneChatVideoPipLayout();
+                showToast(`Viser ${getPeerRoleName()} i stort vindu og ditt kamera i lite vindu`, 'info');
+                return;
+            }
+            ONECHAT_STATE.localIsSmallPip = !ONECHAT_STATE.localIsSmallPip;
+            applyOneChatVideoPipLayout();
+            showToast(
+                ONECHAT_STATE.localIsSmallPip
+                    ? `${getPeerRoleName()} vises nå stort, og ditt kamera er lite`
+                    : `Ditt kamera vises nå stort, og ${getPeerRoleName()} er i lite vindu`,
+                'info'
+            );
+        }
+
+        function onVideoContainerClick(which) {
+            if (!ONECHAT_STATE.inCall) return;
+            // If user clicks whichever window is currently the small PiP, swap them!
+            if (which === 'local' && ONECHAT_STATE.localIsSmallPip) {
+                swapOneChatPipView();
+            } else if (which === 'remote' && !ONECHAT_STATE.localIsSmallPip) {
+                swapOneChatPipView();
+            }
+        }
+
+        function setSurroundingsHiddenForOneChat(hideAll) {
+            const topHeader = document.querySelector('header');
+            const leftPanel = document.getElementById('left-panel');
+            const rightPanel = document.getElementById('right-panel');
+            const bottomFooter = document.querySelector('footer');
+            const mobileNav = document.querySelector('nav');
+            const mobileHud = document.getElementById('mobile-3d-floating-hud');
+            const leftToggle = document.getElementById('left-toggle-btn');
+            const rightToggle = document.getElementById('right-toggle-btn');
+
+            [topHeader, leftPanel, rightPanel, bottomFooter, mobileNav, mobileHud].forEach(el => {
+                if (!el) return;
+                if (hideAll) {
+                    el.classList.add('!hidden');
+                } else {
+                    el.classList.remove('!hidden');
+                }
+            });
+            if (hideAll) {
+                if (leftToggle) leftToggle.classList.add('!hidden');
+                if (rightToggle) rightToggle.classList.add('!hidden');
+            } else {
+                if (leftToggle) leftToggle.classList.remove('!hidden');
+                if (rightToggle) rightToggle.classList.remove('!hidden');
+            }
+        }
 
         function syncOneChatLockUI() {
             const topLock = document.getElementById('onechat-top-lock-icon');
@@ -2694,35 +2953,34 @@ if __name__ == "__main__":
             const subEl = document.getElementById('onechat-role-subtitle');
             if (titleEl) titleEl.textContent = peerName;
             if (subEl) {
-                subEl.innerHTML = `Du er <strong class="${APP_STATE.role === 'A' ? 'text-cyan-300' : 'text-emerald-300'}">${myName}</strong> • Direkte P2P med <strong class="text-yellow-300">${peerName}</strong>`;
+                subEl.innerHTML = `Du er <strong class="${APP_STATE.role === 'A' ? 'text-cyan-300' : 'text-emerald-300'}">${myName}</strong>`;
             }
         }
 
         async function openOneChatTab() {
             ONECHAT_STATE.isOpen = true;
             syncOneChatLockUI();
+            setSurroundingsHiddenForOneChat(true);
 
             const overlay = document.getElementById('onechat-overlay');
             if (overlay) overlay.classList.remove('hidden');
 
-            // Highlight top desktop button
-            const topBtn = document.getElementById('mode-btn-onechat');
-            if (topBtn) {
-                topBtn.className = 'px-3 py-1.5 rounded-md font-extrabold transition-all flex items-center gap-1.5 bg-yellow-400 text-slate-950 shadow-lg';
-            }
-
-            if (window.innerWidth < 1024) {
-                switchMobileTab('onechat');
-            }
-
             await ensureOneChatCameraStarted();
+            applyOneChatVideoPipLayout();
             startSimulatedRemoteCanvasLoop();
         }
 
         function closeOneChatTab() {
             ONECHAT_STATE.isOpen = false;
+            setSurroundingsHiddenForOneChat(false);
+
             const overlay = document.getElementById('onechat-overlay');
             if (overlay) overlay.classList.add('hidden');
+
+            const menu = document.getElementById('onechat-hamburger-drawer');
+            const settings = document.getElementById('onechat-settings-drawer');
+            if (menu) menu.classList.add('hidden');
+            if (settings) settings.classList.add('hidden');
 
             const topBtn = document.getElementById('mode-btn-onechat');
             if (topBtn) {
@@ -2851,23 +3109,124 @@ if __name__ == "__main__":
             renderLoop();
         }
 
+        // Transmit real-time video frames over the open P2P DataChannel / WebSocket AND renegotiate WebRTC RTP tracks
+        async function renegotiateWebRTCVideoTracks() {
+            const pc = APP_STATE.rtcPeer;
+            if (!pc || !ONECHAT_STATE.localStream) return;
+            try {
+                const existingSenders = pc.getSenders();
+                ONECHAT_STATE.localStream.getTracks().forEach(track => {
+                    const alreadyAdded = existingSenders.some(s => s.track && s.track.id === track.id);
+                    if (!alreadyAdded) {
+                        pc.addTrack(track, ONECHAT_STATE.localStream);
+                    }
+                });
+                if (APP_STATE.dataChannel && APP_STATE.dataChannel.readyState === 'open') {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    sendOneChatPayload({
+                        type: 'ONECHAT_WEBRTC_RENEGOTIATE',
+                        sdpType: 'offer',
+                        sdp: pc.localDescription.sdp
+                    });
+                }
+            } catch (e) {}
+        }
+
+        async function handleIncomingWebRTCRenegotiation(msg) {
+            const pc = APP_STATE.rtcPeer;
+            if (!pc || !msg.sdp) return;
+            try {
+                if (msg.sdpType === 'offer') {
+                    await ensureOneChatCameraStarted();
+                    if (ONECHAT_STATE.localStream) {
+                        const existingSenders = pc.getSenders();
+                        ONECHAT_STATE.localStream.getTracks().forEach(track => {
+                            if (!existingSenders.some(s => s.track && s.track.id === track.id)) {
+                                pc.addTrack(track, ONECHAT_STATE.localStream);
+                            }
+                        });
+                    }
+                    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    sendOneChatPayload({
+                        type: 'ONECHAT_WEBRTC_RENEGOTIATE',
+                        sdpType: 'answer',
+                        sdp: pc.localDescription.sdp
+                    });
+                } else if (msg.sdpType === 'answer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
+                }
+            } catch (e) {}
+        }
+
+        function startP2PVideoFrameStreamer() {
+            if (ONECHAT_STATE.videoStreamInterval) clearInterval(ONECHAT_STATE.videoStreamInterval);
+            const streamCanvas = document.createElement('canvas');
+            const ctx = streamCanvas.getContext('2d');
+
+            const intervalMs = ONECHAT_STATE.videoQuality === 'high' ? 110 : (ONECHAT_STATE.videoQuality === 'low' ? 260 : 150);
+
+            ONECHAT_STATE.videoStreamInterval = setInterval(() => {
+                if (!ONECHAT_STATE.inCall || !ONECHAT_STATE.isVideoCall || ONECHAT_STATE.isCameraOff) return;
+
+                // Only send DataChannel video frames if native WebRTC RTP video isn't already active or if using WebSocket bridge
+                const dcOpen = APP_STATE.dataChannel && APP_STATE.dataChannel.readyState === 'open' && APP_STATE.dataChannel.bufferedAmount < 65536;
+                const wsOpen = APP_STATE.wsBridge && APP_STATE.wsBridge.readyState === WebSocket.OPEN;
+                if (!dcOpen && !wsOpen) return;
+
+                const localVideo = document.getElementById('onechat-local-video');
+                if (!localVideo || localVideo.readyState < 2) return;
+
+                streamCanvas.width = ONECHAT_STATE.videoQuality === 'low' ? 240 : 320;
+                streamCanvas.height = ONECHAT_STATE.videoQuality === 'low' ? 180 : 240;
+                ctx.filter = ONECHAT_STATE.filters[ONECHAT_STATE.filterIndex].css;
+                ctx.drawImage(localVideo, 0, 0, streamCanvas.width, streamCanvas.height);
+                ctx.filter = 'none';
+
+                const frameDataUrl = streamCanvas.toDataURL('image/jpeg', ONECHAT_STATE.videoQuality === 'high' ? 0.62 : 0.5);
+                sendOneChatPayload({
+                    type: 'ONECHAT_VIDEO_FRAME',
+                    sender: getRoleName(APP_STATE.role),
+                    frame: frameDataUrl,
+                    ts: Date.now()
+                });
+            }, intervalMs);
+        }
+
+        function renderIncomingPeerVideoFrame(pkt) {
+            if (!pkt || !pkt.frame) return;
+            ONECHAT_STATE.lastFrameReceivedAt = Date.now();
+            const remoteImg = document.getElementById('onechat-remote-stream-img');
+            const simCanvas = document.getElementById('onechat-sim-remote-canvas');
+            const remoteVideo = document.getElementById('onechat-remote-video');
+
+            // If native WebRTC <video> isn't playing a live track, display the real-time P2P DataChannel video stream!
+            if (!ONECHAT_STATE.hasRealRemoteTrack && remoteImg) {
+                remoteImg.src = pkt.frame;
+                remoteImg.classList.remove('hidden');
+                if (simCanvas) simCanvas.classList.add('hidden');
+                if (remoteVideo) remoteVideo.classList.add('hidden');
+            }
+        }
+
         async function startOneChatCall(withVideo = true) {
             if (!APP_STATE.isTunnelActive) {
                 quickConnectForOneChat();
             }
             ONECHAT_STATE.inCall = true;
             ONECHAT_STATE.isVideoCall = withVideo;
+            // Default when starting video call: Own camera is small PiP in corner, Peer video is large!
+            ONECHAT_STATE.localIsSmallPip = true;
 
             await ensureOneChatCameraStarted();
-
-            // Put local video into Snapchat Picture-in-Picture corner card so remote peer stream is visible
-            const pip = document.getElementById('onechat-local-pip');
-            pip.className = 'absolute bottom-20 right-3 w-28 h-40 sm:w-36 sm:h-48 rounded-2xl border-2 border-yellow-400 shadow-2xl overflow-hidden z-20 transition-all duration-300 bg-slate-950';
+            applyOneChatVideoPipLayout();
 
             document.getElementById('btn-onechat-hangup').classList.remove('hidden');
             document.getElementById('onechat-call-timer').classList.remove('hidden');
             document.getElementById('onechat-stage-status').textContent = withVideo
-                ? `P2P Videosamtale med ${getPeerRoleName()}`
+                ? `P2P Videosamtale (${getPeerRoleName()} vises stort)`
                 : `P2P Lydsamtale med ${getPeerRoleName()}`;
 
             ONECHAT_STATE.callStartTime = Date.now();
@@ -2879,13 +3238,12 @@ if __name__ == "__main__":
                 document.getElementById('onechat-call-timer').textContent = `${mm}:${ss}`;
             }, 1000);
 
-            // Attach media tracks to real WebRTC peer connection if present
-            if (APP_STATE.rtcPeer && ONECHAT_STATE.localStream) {
-                try {
-                    ONECHAT_STATE.localStream.getTracks().forEach(track => {
-                        APP_STATE.rtcPeer.addTrack(track, ONECHAT_STATE.localStream);
-                    });
-                } catch (e) {}
+            // 1. Renegotiate native WebRTC RTP media tracks over the open P2P DataChannel
+            await renegotiateWebRTCVideoTracks();
+
+            // 2. Also start real-time P2P DataChannel frame streaming so video is guaranteed to reach peer!
+            if (withVideo) {
+                startP2PVideoFrameStreamer();
             }
 
             // Send call signal over P2P channel & 3D stream burst
@@ -2899,7 +3257,7 @@ if __name__ == "__main__":
             appendOneChatEntry('SYSTEM', `📹 ${getRoleName(APP_STATE.role)} startet en direkte P2P ${withVideo ? 'videosamtale' : 'lydsamtale'}`, true, 'call');
             spawn3DPacket(APP_STATE.role === 'A' ? 'A_TO_B' : 'B_TO_A', 'UDP', true, 0.25);
             spawn3DPacket(APP_STATE.role === 'A' ? 'B_TO_A' : 'A_TO_B', 'UDP', true, -0.25);
-            showToast(`Direkte P2P ${withVideo ? 'videosamtale' : 'lydsamtale'} startet med ${getPeerRoleName()}!`, 'success');
+            showToast(`Videosamtale startet! Eget kamera er nå lite — trykk på det for å bytte.`, 'success');
         }
 
         function endOneChatCall() {
@@ -2908,12 +3266,15 @@ if __name__ == "__main__":
                 clearInterval(ONECHAT_STATE.callTimerInterval);
                 ONECHAT_STATE.callTimerInterval = null;
             }
+            if (ONECHAT_STATE.videoStreamInterval) {
+                clearInterval(ONECHAT_STATE.videoStreamInterval);
+                ONECHAT_STATE.videoStreamInterval = null;
+            }
             document.getElementById('btn-onechat-hangup').classList.add('hidden');
             document.getElementById('onechat-call-timer').classList.add('hidden');
             document.getElementById('onechat-stage-status').textContent = 'Snap-Kamera Klar';
 
-            const pip = document.getElementById('onechat-local-pip');
-            pip.className = 'absolute inset-0 transition-all duration-300 flex items-center justify-center overflow-hidden';
+            applyOneChatVideoPipLayout();
 
             sendOneChatPayload({
                 type: 'ONECHAT_CALL_SIGNAL',
@@ -2924,12 +3285,20 @@ if __name__ == "__main__":
             showToast('Videosamtale avsluttet.', 'info');
         }
 
-        function handleIncomingOneChatCallSignal(sig) {
+        async function handleIncomingOneChatCallSignal(sig) {
             if (sig.action === 'START') {
                 appendOneChatEntry(sig.sender || getPeerRoleName(), `📹 Startet direkte P2P ${sig.withVideo ? 'videosamtale' : 'lydsamtale'}!`, false, 'call');
                 showToast(`${sig.sender || getPeerRoleName()} ringer deg direkte på OneChat!`, 'success');
                 if (!ONECHAT_STATE.inCall) {
-                    startOneChatCall(sig.withVideo);
+                    ONECHAT_STATE.inCall = true;
+                    ONECHAT_STATE.isVideoCall = sig.withVideo;
+                    ONECHAT_STATE.localIsSmallPip = true;
+                    await ensureOneChatCameraStarted();
+                    applyOneChatVideoPipLayout();
+                    document.getElementById('btn-onechat-hangup').classList.remove('hidden');
+                    document.getElementById('onechat-call-timer').classList.remove('hidden');
+                    ONECHAT_STATE.callStartTime = Date.now();
+                    if (sig.withVideo) startP2PVideoFrameStreamer();
                 }
             } else if (sig.action === 'END') {
                 if (ONECHAT_STATE.inCall) endOneChatCall();
@@ -3036,7 +3405,7 @@ if __name__ == "__main__":
                 <div class="flex items-center justify-between">
                     <span class="font-extrabold text-[11px] uppercase tracking-wider ${isSelf ? 'text-rose-400' : 'text-yellow-300'}">${sender}</span>
                     <span class="text-[10px] font-mono text-rose-400 flex items-center gap-1">
-                        <i class="fa-solid fa-square"></i> NY BILDE-SNAP ${isEphemeral ? '(10s)' : ''}
+                        <i class="fa-solid fa-square"></i> NY BILDE-SNAP ${isEphemeral ? `(${ONECHAT_STATE.snapDurationSec}s)` : ''}
                     </span>
                 </div>
                 <div onclick="openSnapViewer('${imageUrl}', '${caption.replace(/'/g, "\\'")}')" class="group relative rounded-xl overflow-hidden border border-rose-500/40 cursor-pointer max-h-40 bg-black flex items-center justify-center">
@@ -3058,7 +3427,7 @@ if __name__ == "__main__":
                             <span><i class="fa-regular fa-square text-rose-400 mr-1"></i>Snap Åpnet & Utløpt</span>
                         </div>
                     `;
-                }, 14000);
+                }, (ONECHAT_STATE.snapDurationSec + 4) * 1000);
             }
         }
 
@@ -3072,7 +3441,7 @@ if __name__ == "__main__":
             cap.textContent = caption || '';
             modal.classList.remove('hidden');
 
-            let remaining = 10;
+            let remaining = ONECHAT_STATE.snapDurationSec || 10;
             timerEl.textContent = remaining;
             if (ONECHAT_STATE.snapViewerInterval) clearInterval(ONECHAT_STATE.snapViewerInterval);
             ONECHAT_STATE.snapViewerInterval = setInterval(() => {
