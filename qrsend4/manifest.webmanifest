@@ -1,0 +1,10 @@
+{
+  "name": "QR-overføring 4",
+  "short_name": "QR-overføring 4",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#111418",
+  "theme_color": "#111418",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
