@@ -8,6 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Three.js r128 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- QRCode Generator & jsQR Camera Scanner for Optical Air-Gapped Handshake -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts: Inter & JetBrains Mono -->
@@ -374,13 +377,18 @@
 
                 <!-- Step 2: Receive Remote SDP & Punch Hole -->
                 <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <span id="step2-title" class="font-semibold text-white">Steg 2: Lim inn motpartens SDP</span>
-                        <button onclick="pasteIntoRemoteSdp()" class="text-[11px] font-mono text-cyan-400 hover:underline flex items-center gap-1 py-1 px-2 rounded bg-slate-800/80">
-                            <i class="fa-solid fa-paste"></i> Lim inn
-                        </button>
+                    <div class="flex items-center justify-between gap-1">
+                        <span id="step2-title" class="font-semibold text-white">Steg 2: Les motpartens SDP</span>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="openQrScannerModal()" class="text-[11px] font-semibold text-amber-300 hover:text-amber-200 flex items-center gap-1 py-1 px-2.5 rounded-lg bg-amber-950/80 border border-amber-500/40 shadow" title="Skann QR-kode fra den andre skjermen med kamera">
+                                <i class="fa-solid fa-camera"></i> Skann QR
+                            </button>
+                            <button onclick="pasteIntoRemoteSdp()" class="text-[11px] font-mono text-cyan-400 hover:underline flex items-center gap-1 py-1 px-2 rounded-lg bg-slate-800/80 border border-slate-700">
+                                <i class="fa-solid fa-paste"></i> Lim inn
+                            </button>
+                        </div>
                     </div>
-                    <textarea id="remote-sdp-box" rows="2" placeholder="Lim inn Base64 SDP-strengen fra den andre enheten her..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-emerald-300 focus:border-emerald-500 focus:outline-none"></textarea>
+                    <textarea id="remote-sdp-box" rows="2" placeholder="Trykk 'Skann QR' for å lese QR-koden fra Initiator med kameraet, eller lim inn koden her..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-emerald-300 focus:border-emerald-500 focus:outline-none"></textarea>
                     <button onclick="processRemoteSDP()" class="w-full min-h-[46px] py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50">
                         <i class="fa-solid fa-satellite-dish"></i>
                         <span id="btn-process-sdp-label">Aktiver Motpart & Slå Hull i Brannmur</span>
@@ -722,20 +730,81 @@
             <div class="px-5 py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-qrcode text-cyan-400"></i>
-                    <h3 class="font-bold text-white text-sm">Optisk Air-Gapped SDP-Matrise</h3>
+                    <h3 id="qr-modal-title" class="font-bold text-white text-sm">Skannbar P2P QR-Kode</h3>
                 </div>
                 <button onclick="closeQrModal()" class="text-slate-400 hover:text-white p-1.5">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             <div class="p-5 flex flex-col items-center gap-3 text-center">
-                <canvas id="qr-canvas" width="220" height="220" class="rounded-lg border-4 border-white bg-white shadow-lg"></canvas>
-                <p class="text-xs text-slate-300">Visuell datamatrise av din komprimerte SDP-pakke inkludert injiserte WAN-endepunkter.</p>
-                <div id="qr-summary-text" class="w-full p-2 rounded bg-slate-950 border border-slate-800 font-mono text-[10px] text-cyan-300 break-all max-h-24 overflow-y-auto selectable"></div>
+                <div id="qr-code-container" class="p-3 rounded-xl bg-white shadow-xl flex items-center justify-center min-w-[236px] min-h-[236px]">
+                    <canvas id="qr-canvas" width="220" height="220" class="rounded"></canvas>
+                </div>
+                <p id="qr-modal-subtitle" class="text-xs text-slate-300">Rett kameraet på den andre enheten (<strong class="text-amber-300">Skann QR</strong> i Steg 2) mot denne koden.</p>
+                <div id="qr-summary-text" class="w-full p-2 rounded bg-slate-950 border border-slate-800 font-mono text-[10px] text-cyan-300 break-all max-h-20 overflow-y-auto selectable"></div>
             </div>
             <div class="px-5 py-3 bg-slate-900 border-t border-slate-800 flex justify-between gap-2">
-                <button onclick="copyTextFrom('local-sdp-box', 'SDP-streng kopiert!')" class="flex-1 min-h-[42px] px-4 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold">Kopier SDP-tekst</button>
-                <button onclick="closeQrModal()" class="min-h-[42px] px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium">Lukk</button>
+                <button onclick="openQrScannerModal(); closeQrModal();" class="min-h-[42px] px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center gap-1.5">
+                    <i class="fa-solid fa-camera"></i> Åpne QR-Skanner
+                </button>
+                <button onclick="copyTextFrom('local-sdp-box', 'SDP-streng kopiert!')" class="flex-1 min-h-[42px] px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold">Kopier Tekst</button>
+                <button onclick="closeQrModal()" class="min-h-[42px] px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium">Lukk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 3: CAMERA & IMAGE QR CODE SCANNER (FOR RESPONDER & INITIATOR) ================= -->
+    <div id="qr-scanner-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div class="w-full max-w-md rounded-2xl hud-glass border border-amber-500/50 overflow-hidden flex flex-col">
+            <div class="px-4 py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-camera-viewfinder text-amber-400 text-base"></i>
+                    <div>
+                        <h3 class="font-bold text-white text-sm">Optisk QR-Skanner (Kamera / Bilde)</h3>
+                        <p class="text-[10px] text-slate-400">Leser QR-kode fra Initiator (Offer) eller Responder (Answer)</p>
+                    </div>
+                </div>
+                <button onclick="closeQrScannerModal()" class="text-slate-400 hover:text-white p-1.5">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-4 flex flex-col items-center gap-3">
+                <!-- Live Camera Viewfinder -->
+                <div class="relative w-full aspect-square max-w-[290px] bg-slate-950 rounded-2xl overflow-hidden border-2 border-amber-500/40 shadow-inner flex items-center justify-center">
+                    <video id="qr-video" class="w-full h-full object-cover" playsinline muted></video>
+                    <canvas id="qr-scan-canvas" class="hidden"></canvas>
+
+                    <!-- Targeting Reticle Overlay -->
+                    <div class="absolute inset-8 border-2 border-dashed border-amber-400/70 rounded-xl pointer-events-none flex items-center justify-center">
+                        <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-pulse"></div>
+                    </div>
+
+                    <div id="qr-camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-950/90 text-xs text-slate-400">
+                        <i class="fa-solid fa-spinner fa-spin text-amber-400 text-2xl mb-2"></i>
+                        <span id="qr-camera-status">Starter kamera for QR-avlesning...</span>
+                    </div>
+                </div>
+
+                <!-- Camera Controls & Fallback Image File Picker -->
+                <div class="w-full flex flex-wrap items-center justify-between gap-2">
+                    <button onclick="switchScannerCamera()" class="flex-1 min-h-[42px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-camera-rotate text-cyan-400"></i> Bytt Kamera
+                    </button>
+                    <label class="flex-1 min-h-[42px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-amber-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-image"></i> Les fra Bilde
+                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="scanQrFromImageFile(event)">
+                    </label>
+                </div>
+
+                <div class="w-full p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1"></i>
+                    <strong>Automatisk:</strong> Så snart QR-koden fra Initiator oppdages, genererer Responder sitt svar og åpner hull i brannmuren!
+                </div>
+            </div>
+
+            <div class="px-4 py-3 bg-slate-900 border-t border-slate-800 flex justify-end">
+                <button onclick="closeQrScannerModal()" class="min-h-[40px] px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium">Avbryt</button>
             </div>
         </div>
     </div>
@@ -1120,6 +1189,104 @@
             document.getElementById('local-sdp-box').value = encoded;
         }
 
+        // Compact QR-friendly Micro-SDP serializer so the WebRTC DTLS fingerprint, ice-ufrag, ice-pwd, and WAN IP/port fit inside an easily scannable QR code
+        function buildCompactQrPayload() {
+            const pc = APP_STATE.rtcPeer;
+            const manualWanIp = document.getElementById('manual-wan-ip').value.trim() || (APP_STATE.role === 'A' ? APP_STATE.fwAWanIp : APP_STATE.fwBWanIp);
+            const manualWanPort = parseInt(document.getElementById('manual-wan-port').value, 10) || 51820;
+
+            if (pc && pc.localDescription && pc.localDescription.sdp) {
+                const sdp = pc.localDescription.sdp;
+                const ufragMatch = sdp.match(/a=ice-ufrag:([^\r\n]+)/);
+                const pwdMatch = sdp.match(/a=ice-pwd:([^\r\n]+)/);
+                const fpMatch = sdp.match(/a=fingerprint:([^\r\n]+)/);
+                const setupMatch = sdp.match(/a=setup:([^\r\n]+)/);
+
+                // Extract local host candidate IP/port if present
+                const hostCand = sdp.split('\r\n').find(l => l.startsWith('a=candidate:') && !l.includes('99999999'));
+                let lanIp = '192.168.1.10';
+                let lanPort = manualWanPort;
+                if (hostCand) {
+                    const parts = hostCand.split(' ');
+                    if (parts.length >= 6) {
+                        lanIp = parts[4];
+                        lanPort = parseInt(parts[5], 10) || manualWanPort;
+                    }
+                }
+
+                const compactObj = {
+                    q: 1, // Compact QR protocol v1
+                    t: pc.localDescription.type === 'offer' ? 'o' : 'a',
+                    r: APP_STATE.role,
+                    u: ufragMatch ? ufragMatch[1] : '',
+                    p: pwdMatch ? pwdMatch[1] : '',
+                    f: fpMatch ? fpMatch[1] : '',
+                    s: setupMatch ? setupMatch[1] : (pc.localDescription.type === 'offer' ? 'actpass' : 'active'),
+                    wi: manualWanIp,
+                    wp: manualWanPort,
+                    li: lanIp,
+                    lp: lanPort
+                };
+                return 'P2PQR1:' + btoa(JSON.stringify(compactObj));
+            }
+
+            // Fallback if user hasn't clicked "Lag SDP Offer" yet: generate a compact instant token
+            return 'P2PQR1:' + btoa(JSON.stringify({
+                q: 1,
+                t: APP_STATE.role === 'A' ? 'o' : 'a',
+                r: APP_STATE.role,
+                wi: manualWanIp,
+                wp: manualWanPort
+            }));
+        }
+
+        function expandCompactQrPayloadToBase64Sdp(qrString) {
+            if (!qrString.startsWith('P2PQR1:')) return qrString;
+            const c = JSON.parse(atob(qrString.slice(7)));
+            const type = c.t === 'o' ? 'offer' : 'answer';
+            const setup = c.s || (type === 'offer' ? 'actpass' : 'active');
+            const wanIp = c.wi || '203.0.113.10';
+            const wanPort = c.wp || 51820;
+            const lanIp = c.li || '192.168.1.10';
+            const lanPort = c.lp || wanPort;
+
+            let reconstructedSdp = '';
+            if (c.u && c.p && c.f) {
+                reconstructedSdp = [
+                    'v=0',
+                    'o=- 4611731400430051336 2 IN IP4 127.0.0.1',
+                    's=-',
+                    't=0 0',
+                    'a=group:BUNDLE 0',
+                    'a=msid-semantic: WMS',
+                    'm=application 9 UDP/DTLS/SCTP webrtc-datachannel',
+                    `c=IN IP4 ${wanIp}`,
+                    `a=ice-ufrag:${c.u}`,
+                    `a=ice-pwd:${c.p}`,
+                    'a=ice-options:trickle',
+                    `a=fingerprint:${c.f}`,
+                    `a=setup:${setup}`,
+                    'a=mid:0',
+                    'a=sctp-port:5000',
+                    'a=max-message-size:262144',
+                    `a=candidate:1 1 udp 2122260223 ${lanIp} ${lanPort} typ host generation 0`,
+                    `a=candidate:999999991 1 udp 2122260223 ${wanIp} ${wanPort} typ host generation 0`,
+                    `a=candidate:999999992 1 udp 1686052607 ${wanIp} ${wanPort} typ srflx raddr ${lanIp} rport ${lanPort} generation 0`,
+                    ''
+                ].join('\r\n');
+            }
+
+            const fullPayload = {
+                type,
+                sdp: reconstructedSdp,
+                role: c.r || (type === 'offer' ? 'A' : 'B'),
+                wanIp,
+                wanPort,
+                isCompactQr: true
+            };
+            return btoa(unescape(encodeURIComponent(JSON.stringify(fullPayload))));
+        }
+
         async function generateWebRTCOffer() {
             try {
                 const pc = createOfflinePeerConnection();
@@ -1133,24 +1300,29 @@
                 // Trigger outbound visual punch on Firewall A
                 punchSingleFirewall('A', APP_STATE.fwAPort);
                 spawn3DPacket('A_TO_B', 'UDP/ICE', true);
-                showToast('SDP Offer med injisert WAN-endepunkt er generert! Kopier til PC B.', 'success');
+                showToast('SDP Offer med injisert WAN-endepunkt er generert! Vis QR-kode eller kopier til PC B.', 'success');
             } catch (err) {
                 showToast('Feil ved opprettelse av SDP Offer: ' + err.message, 'error');
             }
         }
 
-        async function processRemoteSDP() {
-            const rawInput = document.getElementById('remote-sdp-box').value.trim();
+        async function processRemoteSDP(autoOpenAnswerQr = false) {
+            let rawInput = document.getElementById('remote-sdp-box').value.trim();
             if (!rawInput) {
-                // If user clicks button without pasting SDP, run live autonomous punch simulation so they see it immediately
                 showToast('Ingen ekstern SDP limt inn — starter synkron 3D Hole Punching demonstrasjon!', 'info');
                 runSimulationScenario('punch');
                 return;
             }
 
             try {
+                // Support both compact P2PQR1 strings and full Base64 SDP strings
+                if (rawInput.startsWith('P2PQR1:')) {
+                    rawInput = expandCompactQrPayloadToBase64Sdp(rawInput);
+                    document.getElementById('remote-sdp-box').value = rawInput;
+                }
+
                 const decoded = JSON.parse(decodeURIComponent(escape(atob(rawInput))));
-                if (!decoded.type || !decoded.sdp) throw new Error('Ugyldig SDP-format');
+                if (!decoded.type) throw new Error('Ugyldig SDP-format');
 
                 if (decoded.type === 'offer') {
                     // Automatically act as PC B (Responder)
@@ -1160,27 +1332,42 @@
                         APP_STATE.fwAPort = decoded.wanPort || 51820;
                     }
                     const pc = createOfflinePeerConnection();
-                    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: decoded.sdp }));
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    renderFinalSdpWithInjectedWan(pc);
+                    if (decoded.sdp && decoded.sdp.includes('a=ice-ufrag:')) {
+                        await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: decoded.sdp }));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        renderFinalSdpWithInjectedWan(pc);
+                    } else {
+                        // Offer was a lightweight WAN endpoint QR token: create full local description for Responder
+                        const dc = pc.createDataChannel('offline-p2p-holepunch', { ordered: true });
+                        setupDataChannelHandlers(dc);
+                        const offer = await pc.createOffer();
+                        await pc.setLocalDescription(offer);
+                        renderFinalSdpWithInjectedWan(pc);
+                    }
 
                     runSimulationScenario('punch');
-                    showToast('SDP Answer generert! Kopier Base64-strengen fra Steg 1 tilbake til PC A.', 'success');
-                } else if (decoded.type === 'answer') {
-                    if (!APP_STATE.rtcPeer) {
-                        throw new Error('PC A må generere et Offer først før du limer inn Answer.');
+                    showToast('QR/SDP Offer fra Initiator lest! Responder-svar er nå generert.', 'success');
+
+                    if (autoOpenAnswerQr) {
+                        setTimeout(() => {
+                            showQrModal('local-sdp-box', 'Responder Svar-QR (Skann fra PC A)');
+                        }, 350);
                     }
+                } else if (decoded.type === 'answer') {
                     if (decoded.wanIp) {
                         APP_STATE.fwBWanIp = decoded.wanIp;
                         APP_STATE.fwBPort = decoded.wanPort || 51820;
                     }
-                    await APP_STATE.rtcPeer.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: decoded.sdp }));
+                    if (APP_STATE.rtcPeer && decoded.sdp && decoded.sdp.includes('a=ice-ufrag:')) {
+                        await APP_STATE.rtcPeer.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: decoded.sdp }));
+                    }
                     runSimulationScenario('punch');
-                    showToast('Motpartens SDP Answer aktivert — slår hull i begge brannmurer!', 'success');
+                    activateFullP2PTunnel('Optisk QR-Handshake Fullført');
+                    showToast('Motpartens SDP Answer aktivert — hull slått i begge brannmurer!', 'success');
                 }
             } catch (err) {
-                showToast('Kunne ikke lese SDP-pakke: ' + err.message, 'error');
+                showToast('Kunne ikke lese SDP/QR-pakke: ' + err.message, 'error');
             }
         }
 
@@ -1325,57 +1512,163 @@ if __name__ == "__main__":
         }
 
         /**************************************************************************
-         * 5. OPTICAL QR MATRIX GENERATOR (CANVAS 2D)
+         * 5. REAL ISO QR GENERATOR & CAMERA QR SCANNER (FOR RESPONDER & INITIATOR)
          **************************************************************************/
-        function showQrModal(sourceId) {
-            const text = document.getElementById(sourceId).value.trim() || 'SDP_OFFLINE_HOLE_PUNCH_DEMO_PAYLOAD';
-            document.getElementById('qr-summary-text').textContent = text;
-            document.getElementById('qr-modal').classList.remove('hidden');
+        let qrScannerStream = null;
+        let qrScannerAnimFrame = null;
+        let qrFacingMode = 'environment';
 
-            const canvas = document.getElementById('qr-canvas');
-            const ctx = canvas.getContext('2d');
-            const size = 29;
-            const cell = canvas.width / size;
-
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Deterministic high-contrast matrix from SDP payload + standard finder patterns
-            ctx.fillStyle = '#050811';
-            const drawFinder = (ox, oy) => {
-                for (let y = 0; y < 7; y++) {
-                    for (let x = 0; x < 7; x++) {
-                        if (x === 0 || x === 6 || y === 0 || y === 6 || (x >= 2 && x <= 4 && y >= 2 && y <= 4)) {
-                            ctx.fillRect((ox + x) * cell, (oy + y) * cell, Math.ceil(cell), Math.ceil(cell));
-                        }
-                    }
-                }
-            };
-            drawFinder(1, 1);
-            drawFinder(size - 8, 1);
-            drawFinder(1, size - 8);
-
-            let hash = 2166136261;
-            for (let i = 0; i < text.length; i++) {
-                hash ^= text.charCodeAt(i);
-                hash = Math.imul(hash, 16777619);
+        async function showQrModal(sourceId, customTitle = null) {
+            // If PC A hasn't generated its Offer yet, automatically generate it now so the QR code is ready!
+            let rawText = document.getElementById(sourceId).value.trim();
+            if (!rawText && APP_STATE.role === 'A') {
+                await generateWebRTCOffer();
+                rawText = document.getElementById(sourceId).value.trim();
             }
 
-            for (let y = 1; y < size - 1; y++) {
-                for (let x = 1; x < size - 1; x++) {
-                    const inFinder = (x < 9 && y < 9) || (x > size - 10 && y < 9) || (x < 9 && y > size - 10);
-                    if (inFinder) continue;
-                    const charCode = text.charCodeAt((x * y + x + y) % text.length) || 7;
-                    const bit = ((charCode + x * 17 + y * 31 + hash) & 3) === 0 || ((charCode >> (x % 7)) & 1) === 1;
-                    if (bit) {
-                        ctx.fillRect(x * cell, y * cell, Math.ceil(cell), Math.ceil(cell));
-                    }
-                }
+            const compactQrString = buildCompactQrPayload();
+            document.getElementById('qr-summary-text').textContent = compactQrString;
+            document.getElementById('qr-modal-title').textContent = customTitle || (APP_STATE.role === 'A'
+                ? 'Initiator (PC A) QR-Kode — Skann med Responder'
+                : 'Responder (PC B) Svar-QR — Skann med Initiator');
+            document.getElementById('qr-modal').classList.remove('hidden');
+
+            const container = document.getElementById('qr-code-container');
+            container.innerHTML = '';
+
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(container, {
+                    text: compactQrString,
+                    width: 220,
+                    height: 220,
+                    colorDark: '#050811',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+            } else {
+                container.innerHTML = '<div class="text-xs text-rose-500 p-4">Kunne ikke laste QR-bibliotek. Bruk Kopier Tekst.</div>';
             }
         }
 
         function closeQrModal() {
             document.getElementById('qr-modal').classList.add('hidden');
+        }
+
+        async function openQrScannerModal() {
+            document.getElementById('qr-scanner-modal').classList.remove('hidden');
+            await startQrCameraStream();
+        }
+
+        function closeQrScannerModal() {
+            stopQrCameraStream();
+            document.getElementById('qr-scanner-modal').classList.add('hidden');
+        }
+
+        async function switchScannerCamera() {
+            qrFacingMode = qrFacingMode === 'environment' ? 'user' : 'environment';
+            await startQrCameraStream();
+        }
+
+        async function startQrCameraStream() {
+            stopQrCameraStream();
+            const video = document.getElementById('qr-video');
+            const placeholder = document.getElementById('qr-camera-placeholder');
+            const statusText = document.getElementById('qr-camera-status');
+
+            placeholder.classList.remove('hidden');
+            statusText.textContent = 'Starter kamera for QR-avlesning...';
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                statusText.textContent = 'Kamera ikke tilgjengelig i denne visningen. Bruk "Les fra Bilde"-knappen under!';
+                return;
+            }
+
+            try {
+                qrScannerStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: qrFacingMode }, width: { ideal: 640 }, height: { ideal: 640 } },
+                    audio: false
+                });
+                video.srcObject = qrScannerStream;
+                await video.play();
+                placeholder.classList.add('hidden');
+                qrScannerAnimFrame = requestAnimationFrame(tickQrVideoScan);
+            } catch (err) {
+                statusText.textContent = 'Kameratilgang avslått eller utilgjengelig. Trykk "Les fra Bilde" for å ta bilde av QR-koden!';
+            }
+        }
+
+        function stopQrCameraStream() {
+            if (qrScannerAnimFrame) {
+                cancelAnimationFrame(qrScannerAnimFrame);
+                qrScannerAnimFrame = null;
+            }
+            if (qrScannerStream) {
+                qrScannerStream.getTracks().forEach(t => t.stop());
+                qrScannerStream = null;
+            }
+        }
+
+        function tickQrVideoScan() {
+            const video = document.getElementById('qr-video');
+            const canvas = document.getElementById('qr-scan-canvas');
+            if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+                qrScannerAnimFrame = requestAnimationFrame(tickQrVideoScan);
+                return;
+            }
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            if (typeof jsQR !== 'undefined') {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+                if (code && code.data && code.data.trim()) {
+                    handleScannedQrPayload(code.data.trim());
+                    return;
+                }
+            }
+
+            qrScannerAnimFrame = requestAnimationFrame(tickQrVideoScan);
+        }
+
+        function scanQrFromImageFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById('qr-scan-canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    if (typeof jsQR !== 'undefined') {
+                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imgData.data, imgData.width, imgData.height);
+                        if (code && code.data) {
+                            handleScannedQrPayload(code.data.trim());
+                        } else {
+                            showToast('Fant ingen gyldig QR-kode i bildet. Prøv litt nærmere skjermen.', 'warn');
+                        }
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleScannedQrPayload(scannedData) {
+            closeQrScannerModal();
+            document.getElementById('remote-sdp-box').value = scannedData;
+            logPacketEvent('QR-OPTISK', 'Kamera-Skanner', `PC_${APP_STATE.role}`, 'OK', `Leste optisk QR-pakke (${scannedData.length} tegn)`);
+            showToast('QR-kode fra motpart lest! Prosesserer og slår hull i brannmur...', 'success');
+            // Process the scanned Offer/Answer and automatically display Responder's Answer QR if an Offer was scanned
+            processRemoteSDP(true);
         }
 
         /**************************************************************************
