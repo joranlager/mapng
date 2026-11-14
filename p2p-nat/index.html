@@ -42,7 +42,907 @@
     <style>
         * {
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
             user-select: none;
+        }
+        input, textarea, select, pre, code, .selectable {
+            user-select: text;
+        }
+        /* Prevent iOS Safari auto-zoom on focus by ensuring >= 16px on mobile inputs */
+        @media (max-width: 1023px) {
+            input, textarea, select {
+                font-size: 16px !important;
+            }
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            background-color: #050811;
+            color: #e2e8f0;
+            overscroll-behavior: none;
+        }
+        #webgl-container {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100dvh;
+            z-index: 1;
+            touch-action: none;
+        }
+        .hud-glass {
+            background: rgba(9, 15, 28, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.22);
+            box-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.75), 0 0 20px rgba(6, 182, 212, 0.08);
+        }
+        .safe-bottom {
+            padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+        }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.4);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.35);
+            border-radius: 9999px;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* 3D Floating HTML Labels */
+        .node-label {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            pointer-events: none;
+            z-index: 5;
+            transition: opacity 0.2s ease;
+            will-change: left, top;
+        }
+        /* Mobile Slide-Up Bottom Sheet Behaviour */
+        @media (max-width: 1023px) {
+            .mobile-sheet {
+                position: fixed !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: calc(64px + env(safe-area-inset-bottom)) !important;
+                top: auto !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                max-height: 74dvh !important;
+                border-bottom-left-radius: 0 !important;
+                border-bottom-right-radius: 0 !important;
+                border-top-left-radius: 1.25rem !important;
+                border-top-right-radius: 1.25rem !important;
+                z-index: 35 !important;
+                transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease !important;
+            }
+            .mobile-sheet.sheet-closed {
+                transform: translateY(115%) !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            .mobile-sheet.sheet-open {
+                transform: translateY(0%) !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="font-sans antialiased select-none">
+
+    <!-- 3D WebGL Canvas Container -->
+    <div id="webgl-container"></div>
+
+    <!-- Floating 3D HTML Labels Container -->
+    <div id="labels-container" class="fixed inset-0 pointer-events-none z-10 overflow-hidden"></div>
+
+    <!-- Toast Notification Box (No alert/confirm) -->
+    <div id="toast-container" class="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[92vw] max-w-md pointer-events-none"></div>
+
+    <!-- ================= COMPACT RESPONSIVE TOP BAR HUD ================= -->
+    <header class="fixed top-0 left-0 right-0 z-30 px-2.5 py-2 sm:px-4 sm:py-2.5 flex flex-col gap-2 hud-glass border-t-0 border-x-0">
+        <div class="flex items-center justify-between gap-2">
+            <!-- Brand & Title -->
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-lg bg-cyan-500/15 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-inner">
+                    <i class="fa-solid fa-shield-halved text-base sm:text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <h1 class="font-bold text-xs sm:text-base tracking-tight text-white truncate">NAT HOLE PUNCH <span class="text-cyan-400 font-mono text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30">3D P2P</span></h1>
+                        <span class="hidden xl:inline-flex items-center gap-1 text-[11px] font-mono text-emerald-300 bg-emerald-950/70 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-plug-circle-xmark text-[10px]"></i> 0 Internett-tjenester
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 hidden md:block truncate">Direkte PC-til-PC gjennom to brannmurer uten STUN, skyservere eller portåpning</p>
+                </div>
+            </div>
+
+            <!-- Mode Selector (Desktop Inline) -->
+            <div class="hidden lg:flex items-center bg-slate-900/90 p-1 rounded-lg border border-slate-700/70 text-xs">
+                <button id="mode-btn-webrtc" onclick="switchAppMode('webrtc')" class="px-2.5 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 bg-cyan-600 text-white shadow">
+                    <i class="fa-solid fa-network-wired"></i>
+                    <span>Ekte WebRTC (Uten STUN)</span>
+                </button>
+                <button id="mode-btn-pybridge" onclick="switchAppMode('pybridge')" class="px-2.5 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white">
+                    <i class="fa-brands fa-python text-amber-400"></i>
+                    <span>Rå UDP Bro (Python)</span>
+                </button>
+                <button id="mode-btn-sim" onclick="switchAppMode('sim')" class="px-2.5 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-cubes text-emerald-400"></i>
+                    <span>3D Lab & Simulator</span>
+                </button>
+            </div>
+
+            <!-- Live Telemetry & Quick Mobile Camera Button -->
+            <div class="flex items-center gap-1.5 sm:gap-2.5 font-mono text-xs shrink-0">
+                <!-- Connection Status Badge -->
+                <div id="conn-status-badge" class="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-rose-950/70 border border-rose-500/40 text-rose-300">
+                    <span id="conn-status-dot" class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                    <span id="conn-status-text" class="font-semibold tracking-wider text-[10px] sm:text-[11px]">LÅST</span>
+                </div>
+
+                <!-- NAT TTL Compact Pill -->
+                <div class="flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-900/80 border border-slate-700/80" title="NAT Tilstand TTL">
+                    <i class="fa-solid fa-hourglass-half text-cyan-400 text-[10px] sm:text-xs"></i>
+                    <span id="nat-ttl-value" class="text-cyan-300 font-bold text-[10px] sm:text-xs">0.0s</span>
+                    <div class="hidden sm:block w-12 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="nat-ttl-bar" class="h-full bg-cyan-400 transition-all duration-200" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Ping RTT -->
+                <div class="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900/80 border border-slate-700/80">
+                    <i class="fa-solid fa-bolt text-amber-400"></i>
+                    <span id="ping-rtt-value" class="text-white font-bold">-- ms</span>
+                </div>
+
+                <!-- Auto-fit Camera Button (Portrait/Landscape helper) -->
+                <button onclick="autoFitCameraForScreen(true)" class="min-w-[36px] min-h-[36px] sm:min-w-[38px] sm:min-h-[38px] px-2 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/30 text-cyan-300 flex items-center justify-center transition" title="Auto-tilpass 3D-kamera til skjermen">
+                    <i class="fa-solid fa-expand text-xs sm:text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= FLOATING MOBILE SCENARIO & CAMERA HUD (VISIBLE WHEN IN 3D VIEW ON MOBILE) ================= -->
+    <div id="mobile-3d-floating-hud" class="lg:hidden fixed bottom-[72px] left-2 right-2 z-20 flex flex-col gap-1.5 pointer-events-none">
+        <!-- Touch Gesture Hint & Camera Pills -->
+        <div class="flex items-center justify-between gap-1 pointer-events-auto">
+            <div class="flex items-center gap-1 bg-slate-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-slate-700/80 text-[10px] text-slate-300">
+                <i class="fa-solid fa-hand-pointer text-cyan-400"></i>
+                <span>1-finger: Roter • 2-finger: Zoom/Pan</span>
+            </div>
+            <div class="flex items-center gap-1 bg-slate-950/85 backdrop-blur-md p-1 rounded-full border border-slate-700/80 text-[10px]">
+                <button onclick="setCameraPreset('overview')" class="px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 font-medium">Oversikt</button>
+                <button onclick="setCameraPreset('fwA')" class="px-2 py-0.5 rounded-full text-slate-300">FW A</button>
+                <button onclick="setCameraPreset('fwB')" class="px-2 py-0.5 rounded-full text-slate-300">FW B</button>
+                <button onclick="setCameraPreset('top')" class="px-2 py-0.5 rounded-full text-slate-300">Topp</button>
+            </div>
+        </div>
+
+        <!-- Horizontal Swipeable Scenario Bar for Mobile -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 px-1.5 rounded-xl hud-glass pointer-events-auto">
+            <button onclick="runSimulationScenario('blocked')" class="min-h-[42px] px-3 py-1.5 rounded-lg bg-rose-950/85 active:bg-rose-900 border border-rose-500/40 text-rose-200 text-xs font-medium whitespace-nowrap flex items-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-ban text-rose-400"></i> 1. Blokkert
+            </button>
+            <button onclick="runSimulationScenario('punch')" class="min-h-[42px] px-3 py-1.5 rounded-lg bg-cyan-950/90 active:bg-cyan-900 border border-cyan-400/60 text-cyan-200 text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 shrink-0 shadow">
+                <i class="fa-solid fa-bolt text-cyan-300"></i> 2. Synkron Punch
+            </button>
+            <button onclick="runSimulationScenario('symmetric')" class="min-h-[42px] px-3 py-1.5 rounded-lg bg-amber-950/85 active:bg-amber-900 border border-amber-500/40 text-amber-200 text-xs font-medium whitespace-nowrap flex items-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-braille text-amber-400"></i> 3. Port-Spray
+            </button>
+            <button onclick="runSimulationScenario('icmp')" class="min-h-[42px] px-3 py-1.5 rounded-lg bg-indigo-950/85 active:bg-indigo-900 border border-indigo-500/40 text-indigo-200 text-xs font-medium whitespace-nowrap flex items-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-code-merge text-indigo-400"></i> 4. ICMP Tunnel
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= LEFT PANEL / MOBILE SHEET 1: CONNECTION & HOLE PUNCHING ENGINE ================= -->
+    <aside id="left-panel" class="mobile-sheet sheet-closed fixed top-16 left-3 bottom-20 w-[380px] z-20 flex flex-col rounded-xl hud-glass transition-transform duration-300 overflow-hidden">
+        <!-- Mobile Drag Handle -->
+        <div class="lg:hidden pt-2 pb-1 flex flex-col items-center justify-center bg-slate-900/80 border-b border-slate-800/80 cursor-pointer" onclick="switchMobileTab('3d')">
+            <div class="w-12 h-1.5 rounded-full bg-slate-600 mb-1"></div>
+            <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Trykk for å lukke skuff</span>
+        </div>
+
+        <!-- Panel Header -->
+        <div class="px-4 py-2.5 sm:py-3 border-b border-slate-700/70 flex items-center justify-between bg-slate-900/50">
+            <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 font-mono text-xs font-bold">1</span>
+                <h2 class="font-semibold text-sm text-white">Koble til & Hullslåing (Offline)</h2>
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="switchMobileTab('3d')" class="lg:hidden text-slate-400 hover:text-white p-1.5 rounded-lg" title="Lukk">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+                <button onclick="toggleDesktopPanel('left-panel', 'left-toggle-btn')" class="hidden lg:block text-slate-400 hover:text-white p-1 rounded" title="Minimer panel">
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Mode Switcher Inside Sheet -->
+        <div class="lg:hidden px-3.5 pt-2.5">
+            <div class="grid grid-cols-3 bg-slate-900/95 p-1 rounded-xl border border-slate-700/80 text-[11px]">
+                <button id="m-mode-btn-webrtc" onclick="switchAppMode('webrtc')" class="min-h-[38px] py-1.5 px-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-1 bg-cyan-600 text-white shadow">
+                    <i class="fa-solid fa-network-wired"></i>
+                    <span>WebRTC</span>
+                </button>
+                <button id="m-mode-btn-pybridge" onclick="switchAppMode('pybridge')" class="min-h-[38px] py-1.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1 text-slate-300">
+                    <i class="fa-brands fa-python text-amber-400"></i>
+                    <span>UDP Bro</span>
+                </button>
+                <button id="m-mode-btn-sim" onclick="switchAppMode('sim')" class="min-h-[38px] py-1.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1 text-slate-300">
+                    <i class="fa-solid fa-cubes text-emerald-400"></i>
+                    <span>3D Lab</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-3.5 space-y-4 text-xs">
+            <!-- PC Role Selector -->
+            <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Velg denne enhetens rolle:</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="role-btn-a" onclick="selectRole('A')" class="min-h-[48px] p-2.5 rounded-lg border border-cyan-500/60 bg-cyan-950/50 text-left transition-all">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-cyan-300"><i class="fa-solid fa-desktop mr-1"></i> PC A (Initiator)</span>
+                            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Lager SDP Offer / Starter</p>
+                    </button>
+                    <button id="role-btn-b" onclick="selectRole('B')" class="min-h-[48px] p-2.5 rounded-lg border border-slate-700/80 bg-slate-900/60 text-left transition-all hover:border-slate-600">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-slate-300"><i class="fa-solid fa-laptop-code mr-1"></i> PC B (Responder)</span>
+                            <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Lager SDP Answer</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW A: WEBRTC SERVERLESS + MANUAL WAN INJECTION -->
+            <div id="subview-webrtc" class="space-y-3.5">
+                <div class="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-[11px] text-indigo-200 leading-relaxed">
+                    <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>
+                    <strong>WebRTC uten STUN:</strong> Bruker <code class="font-mono text-cyan-300">iceServers: []</code>. Injiser ruterens WAN-IP og port manuelt i SDP-pakken slik at ICE slår hull direkte!
+                </div>
+
+                <!-- Manual WAN IP / Port Candidate Injector -->
+                <div class="p-3 rounded-xl bg-slate-900/90 border border-cyan-500/30 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-cyan-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-syringe"></i> Manuell WAN-IP Injeksjon
+                        </span>
+                        <span class="text-[10px] font-mono bg-cyan-950 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-500/30">Erstatt STUN</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="col-span-2">
+                            <label class="text-[10px] text-slate-400 block mb-1">Egen Brannmur WAN-IP</label>
+                            <input id="manual-wan-ip" type="text" placeholder="203.0.113.10" value="203.0.113.10" class="w-full min-h-[42px] bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-xs text-white focus:border-cyan-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-1">UDP Port</label>
+                            <input id="manual-wan-port" type="number" placeholder="51820" value="51820" class="w-full min-h-[42px] bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-xs text-white focus:border-cyan-400 focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-1">
+                        <label class="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer min-h-[32px]">
+                            <input id="inject-wan-checkbox" type="checkbox" checked class="w-4 h-4 rounded border-slate-700 text-cyan-500 focus:ring-0">
+                            <span>Injiser <code class="font-mono text-emerald-300">srflx/host</code> i SDP</span>
+                        </label>
+                        <button onclick="update3DEndpointLabels()" class="px-2 py-1 rounded bg-slate-800 text-[11px] text-cyan-400 hover:underline font-mono">Oppdater 3D</button>
+                    </div>
+                </div>
+
+                <!-- Step 1: Generate Offer (PC A) or Copy Answer (PC B) -->
+                <div id="webrtc-step-1" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <span id="step1-title" class="font-semibold text-white">Steg 1 (PC A): Generer Tilkoblingspakke</span>
+                        <button onclick="generateWebRTCOffer()" id="btn-gen-offer" class="min-h-[40px] px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-semibold transition flex items-center gap-1.5 shadow shrink-0">
+                            <i class="fa-solid fa-bolt"></i> Lag SDP Offer
+                        </button>
+                    </div>
+                    <textarea id="local-sdp-box" rows="2" readonly placeholder="Trykk 'Lag SDP Offer' for å samle lokale sockets og injisere WAN-kandidat..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 font-mono text-xs text-cyan-300 focus:outline-none"></textarea>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="copyTextFrom('local-sdp-box', 'Lokal SDP-pakke kopiert!')" class="min-h-[42px] py-2 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium flex items-center justify-center gap-1.5 border border-slate-700">
+                            <i class="fa-regular fa-copy"></i> Kopier
+                        </button>
+                        <button onclick="shareSdpNative('local-sdp-box')" class="min-h-[42px] py-2 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-medium flex items-center justify-center gap-1.5 border border-slate-700" title="Del via mobilens delingsmeny">
+                            <i class="fa-solid fa-share-nodes"></i> Del
+                        </button>
+                        <button onclick="showQrModal('local-sdp-box')" class="min-h-[42px] py-2 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 font-medium flex items-center justify-center gap-1.5 border border-slate-700" title="Vis Optisk QR-kode">
+                            <i class="fa-solid fa-qrcode"></i> QR-Kode
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Receive Remote SDP & Punch Hole -->
+                <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span id="step2-title" class="font-semibold text-white">Steg 2: Lim inn motpartens SDP</span>
+                        <button onclick="pasteIntoRemoteSdp()" class="text-[11px] font-mono text-cyan-400 hover:underline flex items-center gap-1 py-1 px-2 rounded bg-slate-800/80">
+                            <i class="fa-solid fa-paste"></i> Lim inn
+                        </button>
+                    </div>
+                    <textarea id="remote-sdp-box" rows="2" placeholder="Lim inn Base64 SDP-strengen fra den andre enheten her..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-emerald-300 focus:border-emerald-500 focus:outline-none"></textarea>
+                    <button onclick="processRemoteSDP()" class="w-full min-h-[46px] py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50">
+                        <i class="fa-solid fa-satellite-dish"></i>
+                        <span id="btn-process-sdp-label">Aktiver Motpart & Slå Hull i Brannmur</span>
+                    </button>
+                </div>
+
+                <!-- Gathered ICE Candidates Inspector -->
+                <div class="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800/90">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Aktive ICE Endepunkter i SDP:</span>
+                        <span id="ice-count-badge" class="text-[10px] font-mono text-cyan-400">0 kandidater</span>
+                    </div>
+                    <div id="ice-candidates-list" class="space-y-1 max-h-24 overflow-y-auto font-mono text-[10px] text-slate-400">
+                        <div class="text-slate-600 italic">Ingen kandidater generert ennå...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW B: PYTHON RAW UDP BRIDGE (100% AUTONOMOUS HOLE PUNCHER) -->
+            <div id="subview-pybridge" class="hidden space-y-3.5">
+                <div class="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/30 text-[11px] text-amber-200 leading-relaxed">
+                    <i class="fa-brands fa-python text-amber-400 mr-1"></i>
+                    <strong>Autonom Rå UDP-Bro:</strong> Låser UDP-port <code class="font-mono">51820</code>, slår hull i begge brannmurene uten STUN (inkludert port-scanning ved symmetrisk NAT), og kobler seg til denne 3D-appen via lokal WebSocket!
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-1">Motparts Brannmur WAN-IP</label>
+                            <input id="py-peer-ip" type="text" value="198.51.100.25" oninput="refreshPythonScript()" class="w-full min-h-[42px] bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-1">Fast UDP Port (Begge)</label>
+                            <input id="py-udp-port" type="number" value="51820" oninput="refreshPythonScript()" class="w-full min-h-[42px] bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-xs text-white">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="text-[11px] font-semibold text-slate-300">WebSocket (<code class="text-amber-300">127.0.0.1:8765</code>):</span>
+                        <span id="ws-bridge-status" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">Frakoblet</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="connectLocalPythonBridge()" class="min-h-[44px] py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-link"></i> Koble til Bro
+                        </button>
+                        <button onclick="openPythonModal()" class="min-h-[44px] py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-semibold transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-code"></i> Vis / Last ned
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW C: 3D INTERACTIVE SIMULATOR & NAT CONFIGURATION -->
+            <div id="subview-sim" class="hidden space-y-3.5">
+                <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-200 leading-relaxed">
+                    <i class="fa-solid fa-flask text-emerald-400 mr-1"></i>
+                    <strong>3D Brannmur-Laboratorium:</strong> Konfigurer NAT-arkitekturen og start hullslåings-scenarier for å inspisere pakkene i 3D.
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-300 block mb-1">Brannmur A & B NAT-Arkitektur:</label>
+                        <select id="sim-nat-type" onchange="onNatTypeChange()" class="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white font-medium focus:border-cyan-400 focus:outline-none">
+                            <option value="cone">Port-Restricted Cone NAT (Standard Hjemme/Bedrift)</option>
+                            <option value="symmetric">Symmetrisk NAT (Endrer port per destinasjon)</option>
+                            <option value="icmp">Streng Brannmur (Kun ICMP Ping / Echo Tillatt)</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="runSimulationScenario('blocked'); switchMobileTab('3d');" class="min-h-[54px] p-2.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/40 text-left transition">
+                            <div class="font-bold text-rose-300 flex items-center justify-between">
+                                <span>1. Uoppfordret</span>
+                                <i class="fa-solid fa-shield-virus"></i>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Blokkeres av brannmur</div>
+                        </button>
+
+                        <button onclick="runSimulationScenario('punch'); switchMobileTab('3d');" class="min-h-[54px] p-2.5 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/70 border border-cyan-500/40 text-left transition">
+                            <div class="font-bold text-cyan-300 flex items-center justify-between">
+                                <span>2. Synkron Punch</span>
+                                <i class="fa-solid fa-burst"></i>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Simultaneous UDP Open</div>
+                        </button>
+
+                        <button onclick="runSimulationScenario('symmetric'); switchMobileTab('3d');" class="min-h-[54px] p-2.5 rounded-lg bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-left transition">
+                            <div class="font-bold text-amber-300 flex items-center justify-between">
+                                <span>3. Port-Spray</span>
+                                <i class="fa-solid fa-braille"></i>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Symmetrisk NAT prediksjon</div>
+                        </button>
+
+                        <button onclick="runSimulationScenario('icmp'); switchMobileTab('3d');" class="min-h-[54px] p-2.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900/70 border border-indigo-500/40 text-left transition">
+                            <div class="font-bold text-indigo-300 flex items-center justify-between">
+                                <span>4. ICMP Tunnel</span>
+                                <i class="fa-solid fa-wave-square"></i>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Ping ID 0x1337 hullslåing</div>
+                        </button>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer min-h-[36px]">
+                            <input id="auto-keepalive-toggle" type="checkbox" checked onchange="toggleAutoKeepAlive()" class="w-4 h-4 rounded border-slate-700 text-emerald-500">
+                            <span>Auto Keep-Alive (hvert 5. sek)</span>
+                        </label>
+                        <button onclick="resetFirewallStates()" class="px-2.5 py-1.5 rounded bg-rose-950/60 border border-rose-500/30 text-[11px] text-rose-300 font-mono">Lukk Hull</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Firewall State Table Comparison (Desktop always visible, also in NAT sheet on mobile) -->
+            <div class="p-3 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-table-list text-cyan-400"></i> Brannmurenes Tilstandstabeller (NAT State)
+                    </span>
+                </div>
+                <div class="p-2 rounded bg-slate-900 border border-slate-800 font-mono text-[10px]">
+                    <div class="flex justify-between text-slate-400 mb-0.5">
+                        <span>BRANNMUR A (Utgående tillatelse):</span>
+                        <span id="fw-a-badge" class="text-rose-400 font-bold">STENGT</span>
+                    </div>
+                    <div id="fw-a-rule" class="text-slate-500 truncate">Ingen aktiv tilstand — dropper inngående</div>
+                </div>
+                <div class="p-2 rounded bg-slate-900 border border-slate-800 font-mono text-[10px]">
+                    <div class="flex justify-between text-slate-400 mb-0.5">
+                        <span>BRANNMUR B (Utgående tillatelse):</span>
+                        <span id="fw-b-badge" class="text-rose-400 font-bold">STENGT</span>
+                    </div>
+                    <div id="fw-b-rule" class="text-slate-500 truncate">Ingen aktiv tilstand — dropper inngående</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Desktop Button to reopen Left Panel when minimized -->
+    <button id="left-toggle-btn" onclick="toggleDesktopPanel('left-panel', 'left-toggle-btn')" class="hidden fixed top-20 left-3 z-20 px-3 py-2 rounded-lg hud-glass text-cyan-300 hover:text-white text-xs font-semibold items-center gap-2">
+        <i class="fa-solid fa-sliders"></i>
+        <span>1. Hullslåing</span>
+    </button>
+
+    <!-- ================= RIGHT PANEL / MOBILE SHEET 2 & 3: P2P CHAT, FILES & PACKET INSPECTOR ================= -->
+    <aside id="right-panel" class="mobile-sheet sheet-closed fixed top-16 right-3 bottom-20 w-[390px] z-20 flex flex-col rounded-xl hud-glass transition-transform duration-300 overflow-hidden">
+        <!-- Mobile Drag Handle -->
+        <div class="lg:hidden pt-2 pb-1 flex flex-col items-center justify-center bg-slate-900/80 border-b border-slate-800/80 cursor-pointer" onclick="switchMobileTab('3d')">
+            <div class="w-12 h-1.5 rounded-full bg-slate-600 mb-1"></div>
+            <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Trykk for å lukke skuff</span>
+        </div>
+
+        <!-- Panel Header -->
+        <div class="px-4 py-2.5 sm:py-3 border-b border-slate-700/70 flex items-center justify-between bg-slate-900/50">
+            <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 font-mono text-xs font-bold">2</span>
+                <h2 id="right-panel-title" class="font-semibold text-sm text-white">Direkte P2P-Kanal & Pakke-Logg</h2>
+            </div>
+            <div class="flex items-center gap-1">
+                <button onclick="switchMobileTab('3d')" class="lg:hidden text-slate-400 hover:text-white p-1.5 rounded-lg" title="Lukk">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+                <button onclick="toggleDesktopPanel('right-panel', 'right-toggle-btn')" class="hidden lg:block text-slate-400 hover:text-white p-1 rounded" title="Minimer panel">
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3.5 text-xs">
+            <!-- Quick Action Bar: Ping & Keep-Alive -->
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="sendKeepAlivePacket()" class="min-h-[44px] py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-950 border border-cyan-500/30 text-cyan-300 font-medium flex items-center justify-center gap-1.5 transition">
+                    <i class="fa-solid fa-heart-pulse"></i> Send Keep-Alive
+                </button>
+                <button onclick="sendPingBurst()" class="min-h-[44px] py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-950 border border-emerald-500/30 text-emerald-300 font-medium flex items-center justify-center gap-1.5 transition">
+                    <i class="fa-solid fa-satellite"></i> Mål P2P-RTT Ping
+                </button>
+            </div>
+
+            <!-- SECTION A: CHAT & FILE TRANSFER -->
+            <div id="right-section-chat" class="space-y-3.5">
+                <!-- Encrypted P2P Chat Box -->
+                <div class="flex flex-col bg-slate-950/80 rounded-xl border border-slate-800 overflow-hidden h-52 sm:h-48">
+                    <div class="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-[11px]">
+                        <span class="font-semibold text-slate-300"><i class="fa-solid fa-lock text-emerald-400 mr-1"></i> Direkte Kryptert Meldingstunnel</span>
+                        <span id="chat-mode-indicator" class="font-mono text-[10px] text-amber-400">Simulert / Klar</span>
+                    </div>
+                    <div id="chat-messages" class="flex-1 p-2.5 overflow-y-auto space-y-2 font-sans text-xs">
+                        <div class="text-[11px] text-slate-500 text-center py-4">
+                            Slå hull i brannmurene for å sende meldinger og filer direkte mellom PC A og PC B.
+                        </div>
+                    </div>
+                    <form onsubmit="handleChatSubmit(event)" class="p-1.5 bg-slate-900 border-t border-slate-800 flex gap-1.5">
+                        <input id="chat-input" type="text" placeholder="Skriv direktemelding (UDP/SCTP)..." class="flex-1 min-h-[42px] bg-slate-950 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none">
+                        <button type="submit" class="min-w-[44px] min-h-[42px] px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-semibold transition flex items-center justify-center">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Direct File Transfer (Chunked P2P ArrayBuffer) -->
+                <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-shield text-cyan-400"></i> Direkte P2P Filoverføring
+                        </span>
+                        <span id="file-speed-badge" class="text-[10px] font-mono text-emerald-400">0 KB/s</span>
+                    </div>
+                    <label class="min-h-[60px] flex flex-col items-center justify-center p-3 border border-dashed border-slate-700 hover:border-cyan-400 rounded-xl bg-slate-950/60 cursor-pointer transition">
+                        <div class="flex items-center gap-2 text-slate-300 font-medium">
+                            <i class="fa-solid fa-cloud-arrow-up text-cyan-400 text-base"></i>
+                            <span>Trykk for å sende fil gjennom hullet</span>
+                        </div>
+                        <span class="text-[10px] text-slate-500 mt-0.5">Deles i 16 KB UDP-fragmenter (Ekte + 3D-sverm)</span>
+                        <input id="file-input" type="file" class="hidden" onchange="handleFileSelect(event)">
+                    </label>
+                    <div id="file-progress-wrap" class="hidden space-y-1">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-300">
+                            <span id="file-name-label" class="truncate max-w-[200px]">fil.bin</span>
+                            <span id="file-pct-label">0%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div id="file-progress-bar" class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-150" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="received-files-list" class="space-y-1"></div>
+                </div>
+            </div>
+
+            <!-- SECTION B: LOW-LEVEL UDP / FIREWALL PACKET LOG -->
+            <div id="right-section-log" class="flex-1 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden min-h-[180px]">
+                <div class="px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                    <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-terminal text-cyan-400"></i> Sanntids Pakke-Inspektør
+                    </span>
+                    <button onclick="clearPacketLog()" class="text-[11px] text-slate-400 hover:text-white font-mono px-2 py-0.5 rounded bg-slate-800">Tøm</button>
+                </div>
+                <div id="packet-log" class="flex-1 p-2.5 overflow-y-auto font-mono text-[10px] space-y-1.5 leading-relaxed max-h-60 lg:max-h-none"></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Desktop Button to reopen Right Panel when minimized -->
+    <button id="right-toggle-btn" onclick="toggleDesktopPanel('right-panel', 'right-toggle-btn')" class="hidden fixed top-20 right-3 z-20 px-3 py-2 rounded-lg hud-glass text-emerald-300 hover:text-white text-xs font-semibold items-center gap-2">
+        <i class="fa-solid fa-comments"></i>
+        <span>2. P2P-Kanal</span>
+    </button>
+
+    <!-- ================= DESKTOP BOTTOM INTERACTIVE 3D TIMELINE & CAMERA BAR ================= -->
+    <footer class="hidden lg:flex fixed bottom-3 left-1/2 -translate-x-1/2 z-20 w-[96vw] max-w-5xl rounded-xl hud-glass px-3 py-2 flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 overflow-x-auto py-0.5">
+            <span class="text-[10px] font-mono uppercase text-slate-400 mr-1"><i class="fa-solid fa-play mr-1 text-cyan-400"></i>Visualiser:</span>
+            <button onclick="runSimulationScenario('blocked')" class="px-2.5 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-200 text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-ban text-rose-400"></i> 1. Blokkert (Uten Hull)
+            </button>
+            <button onclick="runSimulationScenario('punch')" class="px-2.5 py-1.5 rounded-lg bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-400/50 text-cyan-200 text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition shadow">
+                <i class="fa-solid fa-bolt text-cyan-300"></i> 2. Synkron UDP Hole Punch
+            </button>
+            <button onclick="runSimulationScenario('symmetric')" class="px-2.5 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-500/40 text-amber-200 text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-braille text-amber-400"></i> 3. Symmetrisk Port-Spray
+            </button>
+            <button onclick="runSimulationScenario('icmp')" class="px-2.5 py-1.5 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-200 text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-code-merge text-indigo-400"></i> 4. ICMP Ping Tunnel
+            </button>
+        </div>
+
+        <div class="flex items-center gap-1.5 ml-auto">
+            <div class="flex items-center bg-slate-900/90 rounded-lg p-0.5 border border-slate-700/70 text-[11px]">
+                <button onclick="setCameraPreset('overview')" class="px-2.5 py-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition">Oversikt</button>
+                <button onclick="setCameraPreset('fwA')" class="px-2.5 py-1 rounded hover:bg-slate-800 text-cyan-300 hover:text-white transition">Brannmur A</button>
+                <button onclick="setCameraPreset('fwB')" class="px-2.5 py-1 rounded hover:bg-slate-800 text-emerald-300 hover:text-white transition">Brannmur B</button>
+                <button onclick="setCameraPreset('top')" class="px-2.5 py-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition">Topp</button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================= MOBILE BOTTOM NAVIGATION BAR (<1024px) ================= -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 hud-glass border-b-0 border-x-0 safe-bottom">
+        <div class="grid grid-cols-4 h-16 px-1">
+            <button id="m-nav-3d" onclick="switchMobileTab('3d')" class="flex flex-col items-center justify-center gap-1 text-cyan-400 font-semibold transition">
+                <i class="fa-solid fa-cubes text-base"></i>
+                <span class="text-[10px]">3D Scener</span>
+            </button>
+            <button id="m-nav-connect" onclick="switchMobileTab('connect')" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium transition">
+                <i class="fa-solid fa-satellite-dish text-base"></i>
+                <span class="text-[10px]">Koble til (P2P)</span>
+            </button>
+            <button id="m-nav-chat" onclick="switchMobileTab('chat')" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium transition relative">
+                <i class="fa-solid fa-comments text-base"></i>
+                <span class="text-[10px]">Chat & Filer</span>
+            </button>
+            <button id="m-nav-log" onclick="switchMobileTab('log')" class="flex flex-col items-center justify-center gap-1 text-slate-400 font-medium transition">
+                <i class="fa-solid fa-terminal text-base"></i>
+                <span class="text-[10px]">NAT & Logg</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ================= MODAL 1: PYTHON RAW UDP HOLE PUNCHING & WEBSOCKET BRIDGE SCRIPT ================= -->
+    <div id="python-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <div class="w-full max-w-3xl rounded-2xl hud-glass border border-amber-500/40 overflow-hidden flex flex-col max-h-[88dvh]">
+            <div class="px-4 py-3 sm:px-5 sm:py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <i class="fa-brands fa-python text-amber-400 text-xl shrink-0"></i>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-white text-xs sm:text-sm truncate">udp_hole_punch_bridge.py — Autonom Rå UDP Hullslåer</h3>
+                        <p class="text-[10px] sm:text-[11px] text-slate-400 truncate">Kjør på begge PC-ene for rå UDP-portbevaring (51820)</p>
+                    </div>
+                </div>
+                <button onclick="closePythonModal()" class="text-slate-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-3.5 sm:p-4 overflow-y-auto flex-1 space-y-3 text-xs">
+                <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-300 leading-relaxed text-[11px]">
+                    <strong>Slik fungerer det:</strong> Binder seg direkte til fast kildeport (<code class="text-amber-300 font-mono">51820</code>) og sender synkrone UDP-pakker til motpartens brannmur. Når hullet er slått, kobles trafikken til denne 3D-webappen via <code class="text-cyan-300 font-mono">ws://127.0.0.1:8765</code>.
+                </div>
+                <pre id="python-code-block" class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[10px] sm:text-[11px] text-emerald-300 overflow-x-auto leading-relaxed selectable"></pre>
+            </div>
+            <div class="px-4 py-3 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <button onclick="copyTextFrom('python-code-block', 'Python UDP-skript kopiert!')" class="flex-1 sm:flex-initial min-h-[42px] px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5">
+                        <i class="fa-regular fa-copy"></i> Kopier Skript
+                    </button>
+                    <button onclick="downloadPythonScript()" class="flex-1 sm:flex-initial min-h-[42px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 font-semibold text-xs flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> Last ned .py
+                    </button>
+                </div>
+                <button onclick="closePythonModal()" class="w-full sm:w-auto min-h-[42px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium">Lukk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL 2: OPTICAL AIR-GAPPED SDP QR CODE ================= -->
+    <div id="qr-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl hud-glass border border-cyan-500/40 overflow-hidden flex flex-col">
+            <div class="px-5 py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-cyan-400"></i>
+                    <h3 class="font-bold text-white text-sm">Optisk Air-Gapped SDP-Matrise</h3>
+                </div>
+                <button onclick="closeQrModal()" class="text-slate-400 hover:text-white p-1.5">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-5 flex flex-col items-center gap-3 text-center">
+                <canvas id="qr-canvas" width="220" height="220" class="rounded-lg border-4 border-white bg-white shadow-lg"></canvas>
+                <p class="text-xs text-slate-300">Visuell datamatrise av din komprimerte SDP-pakke inkludert injiserte WAN-endepunkter.</p>
+                <div id="qr-summary-text" class="w-full p-2 rounded bg-slate-950 border border-slate-800 font-mono text-[10px] text-cyan-300 break-all max-h-24 overflow-y-auto selectable"></div>
+            </div>
+            <div class="px-5 py-3 bg-slate-900 border-t border-slate-800 flex justify-between gap-2">
+                <button onclick="copyTextFrom('local-sdp-box', 'SDP-streng kopiert!')" class="flex-1 min-h-[42px] px-4 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold">Kopier SDP-tekst</button>
+                <button onclick="closeQrModal()" class="min-h-[42px] px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium">Lukk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MAIN APPLICATION & 3D WEBGL SCRIPT ================= -->
+    <script>
+        /**************************************************************************
+         * 1. GLOBAL APPLICATION STATE
+         **************************************************************************/
+        const APP_STATE = {
+            mode: 'webrtc',             // 'webrtc' | 'pybridge' | 'sim'
+            mobileTab: '3d',            // '3d' | 'connect' | 'chat' | 'log'
+            role: 'A',                  // 'A' (PC A) | 'B' (PC B)
+            natType: 'cone',            // 'cone' | 'symmetric' | 'icmp'
+            isTunnelActive: false,      // True when BOTH firewalls have matching holes open
+            fwAOpen: false,
+            fwBOpen: false,
+            fwAPort: 51820,
+            fwBPort: 51820,
+            fwAWanIp: '203.0.113.10',
+            fwBWanIp: '198.51.100.25',
+            natTtlMax: 25.0,            // Seconds before NAT state expires without Keep-Alive
+            natTtlRemaining: 0.0,
+            autoKeepAlive: true,
+            lastKeepAliveSent: 0,
+            rttMs: null,
+            rtcPeer: null,
+            dataChannel: null,
+            wsBridge: null,
+            packetsInFlight: [],
+            particles: [],
+            cameraPreset: 'overview'
+        };
+
+        /**************************************************************************
+         * 2. UI HELPER FUNCTIONS, MOBILE DRAWERS & TOAST MESSAGES
+         **************************************************************************/
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const colors = {
+                info: 'border-cyan-500/50 bg-slate-900/95 text-cyan-200',
+                success: 'border-emerald-500/60 bg-emerald-950/95 text-emerald-200',
+                warn: 'border-amber-500/60 bg-amber-950/95 text-amber-200',
+                error: 'border-rose-500/60 bg-rose-950/95 text-rose-200'
+            };
+            const icons = {
+                info: 'fa-circle-info text-cyan-400',
+                success: 'fa-circle-check text-emerald-400',
+                warn: 'fa-triangle-exclamation text-amber-400',
+                error: 'fa-shield-xmark text-rose-400'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `px-3.5 py-2.5 rounded-xl border shadow-2xl flex items-center gap-2.5 text-xs font-medium transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info} shrink-0"></i><span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-8px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function switchMobileTab(tab) {
+            APP_STATE.mobileTab = tab;
+            const leftPanel = document.getElementById('left-panel');
+            const rightPanel = document.getElementById('right-panel');
+            const floatingHud = document.getElementById('mobile-3d-floating-hud');
+            const chatSec = document.getElementById('right-section-chat');
+            const logSec = document.getElementById('right-section-log');
+            const rightTitle = document.getElementById('right-panel-title');
+
+            // Reset mobile bottom nav active states
+            ['3d', 'connect', 'chat', 'log'].forEach(t => {
+                const btn = document.getElementById(`m-nav-${t}`);
+                if (!btn) return;
+                if (t === tab) {
+                    btn.className = 'flex flex-col items-center justify-center gap-1 text-cyan-400 font-semibold transition border-t-2 border-cyan-400 bg-cyan-950/20';
+                } else {
+                    btn.className = 'flex flex-col items-center justify-center gap-1 text-slate-400 font-medium transition';
+                }
+            });
+
+            if (tab === '3d') {
+                leftPanel.classList.remove('sheet-open');
+                leftPanel.classList.add('sheet-closed');
+                rightPanel.classList.remove('sheet-open');
+                rightPanel.classList.add('sheet-closed');
+                floatingHud.classList.remove('hidden');
+            } else if (tab === 'connect') {
+                leftPanel.classList.remove('sheet-closed');
+                leftPanel.classList.add('sheet-open');
+                rightPanel.classList.remove('sheet-open');
+                rightPanel.classList.add('sheet-closed');
+                floatingHud.classList.add('hidden');
+            } else if (tab === 'chat') {
+                rightPanel.classList.remove('sheet-closed');
+                rightPanel.classList.add('sheet-open');
+                leftPanel.classList.remove('sheet-open');
+                leftPanel.classList.add('sheet-closed');
+                floatingHud.classList.add('hidden');
+                chatSec.classList.remove('hidden');
+                logSec.classList.remove('hidden');
+                rightTitle.textContent = 'Direkte P2P Chat & Filoverføring';
+            } else if (tab === 'log') {
+                rightPanel.classList.remove('sheet-closed');
+                rightPanel.classList.add('sheet-open');
+                leftPanel.classList.remove('sheet-open');
+                leftPanel.classList.add('sheet-closed');
+                floatingHud.classList.add('hidden');
+                chatSec.classList.add('hidden');
+                logSec.classList.remove('hidden');
+                rightTitle.textContent = 'Sanntids NAT & Pakke-Inspektør';
+            }
+        }
+
+        function toggleDesktopPanel(panelId, btnId) {
+            const panel = document.getElementById(panelId);
+            const btn = document.getElementById(btnId);
+            const isLeft = panelId === 'left-panel';
+            const hiddenClass = isLeft ? '-translate-x-[110%]' : 'translate-x-[110%]';
+
+            if (panel.classList.contains(hiddenClass)) {
+                panel.classList.remove(hiddenClass);
+                btn.classList.add('hidden');
+                btn.classList.remove('lg:flex');
+            } else {
+                panel.classList.add(hiddenClass);
+                btn.classList.remove('hidden');
+                btn.classList.add('lg:flex');
+            }
+        }
+
+        function switchAppMode(mode) {
+            APP_STATE.mode = mode;
+            ['webrtc', 'pybridge', 'sim'].forEach(m => {
+                const btn = document.getElementById(`mode-btn-${m}`);
+                const mBtn = document.getElementById(`m-mode-btn-${m}`);
+                const view = document.getElementById(`subview-${m}`);
+                if (m === mode) {
+                    if (btn) btn.className = 'px-2.5 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 bg-cyan-600 text-white shadow';
+                    if (mBtn) mBtn.className = 'min-h-[38px] py-1.5 px-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-1 bg-cyan-600 text-white shadow';
+                    view.classList.remove('hidden');
+                } else {
+                    if (btn) btn.className = 'px-2.5 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white';
+                    if (mBtn) mBtn.className = 'min-h-[38px] py-1.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1 text-slate-300';
+                    view.classList.add('hidden');
+                }
+            });
+
+            if (mode === 'pybridge') refreshPythonScript();
+            if (window.innerWidth < 1024 && APP_STATE.mobileTab === '3d') {
+                switchMobileTab('connect');
+            }
+        }
+
+        async function shareSdpNative(elementId) {
+            const text = document.getElementById(elementId).value.trim();
+            if (!text) {
+                showToast('Generer SDP-pakken først før du deler!', 'warn');
+                return;
+            }
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: `P2P Offline SDP (${APP_STATE.role})`,
+                        text: text
+                    });
+                    showToast('Delt via enhetens delingsmeny!', 'success');
+                    return;
+                } catch (err) {
+                    // Fallback to copy
+                }
+            }
+            copyTextFrom(elementId, 'SDP-pakke kopiert til utklippstavlen!');
+        }
+
+        async function pasteIntoRemoteSdp() {
+            const target = document.getElementById('remote-sdp-box');
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    const clip = await navigator.clipboard.readText();
+                    if (clip) {
+                        target.value = clip.trim();
+                        showToast('Limt inn fra utklippstavlen!', 'success');
+                        return;
+                    }
+                }
+            } catch (e) {}
+            target.focus();
+            showToast('Hold fingeren i tekstfeltet og velg "Lim inn".', 'info');
+        }
+
+        function downloadPythonScript() {
+            refreshPythonScript();
+            const code = document.getElementById('python-code-block').textContent;
+            const blob = new Blob([code], { type: 'text/x-python' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'udp_hole_punch_bridge.py';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Lastet ned udp_hole_punch_bridge.py!', 'success');
         }
         input, textarea, pre, code, .selectable {
             user-select: text;
@@ -1515,12 +2415,50 @@ if __name__ == "__main__":
             const badge = document.getElementById('conn-status-badge');
             const dot = document.getElementById('conn-status-dot');
             const text = document.getElementById('conn-status-text');
-            badge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-400/60 text-emerald-300 shadow-lg shadow-emerald-950/50';
+            badge.className = 'flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-400/60 text-emerald-300 shadow-lg shadow-emerald-950/50';
             dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
-            text.textContent = 'P2P TUNNEL AKTIV';
+            text.textContent = window.innerWidth < 640 ? 'P2P AKTIV' : 'P2P TUNNEL AKTIV';
 
-            document.getElementById('ping-rtt-value').textContent = `${APP_STATE.rttMs} ms`;
+            const rttEl = document.getElementById('ping-rtt-value');
+            if (rttEl) rttEl.textContent = `${APP_STATE.rttMs} ms`;
             logPacketEvent('TUNNEL', `PC_A:${APP_STATE.fwAPort}`, `PC_B:${APP_STATE.fwBPort}`, 'OK', `Direkte toveis P2P-forbindelse etablert (${reasonText})`);
+            updateFirewallVisualState();
+        }
+
+        function resetFirewallStates() {
+            APP_STATE.fwAOpen = false;
+            APP_STATE.fwBOpen = false;
+            APP_STATE.isTunnelActive = false;
+            APP_STATE.natTtlRemaining = 0;
+
+            document.getElementById('fw-a-badge').textContent = 'STENGT';
+            document.getElementById('fw-a-badge').className = 'text-rose-400 font-bold';
+            document.getElementById('fw-a-rule').textContent = 'Ingen aktiv tilstand — dropper inngående';
+            document.getElementById('fw-a-rule').className = 'text-slate-500 truncate';
+
+            document.getElementById('fw-b-badge').textContent = 'STENGT';
+            document.getElementById('fw-b-badge').className = 'text-rose-400 font-bold';
+            document.getElementById('fw-b-rule').textContent = 'Ingen aktiv tilstand — dropper inngående';
+            document.getElementById('fw-b-rule').className = 'text-slate-500 truncate';
+
+            const lblA = document.getElementById('lbl-fwa-state');
+            const lblB = document.getElementById('lbl-fwb-state');
+            if (lblA) {
+                lblA.textContent = 'INKOMMENDE: BLOKKERT';
+                lblA.className = 'text-[9px] font-mono text-rose-400 font-bold';
+            }
+            if (lblB) {
+                lblB.textContent = 'INKOMMENDE: BLOKKERT';
+                lblB.className = 'text-[9px] font-mono text-rose-400 font-bold';
+            }
+
+            const badge = document.getElementById('conn-status-badge');
+            const dot = document.getElementById('conn-status-dot');
+            const text = document.getElementById('conn-status-text');
+            badge.className = 'flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-rose-950/70 border border-rose-500/40 text-rose-300';
+            dot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+            text.textContent = window.innerWidth < 640 ? 'LÅST' : 'BRANNMUR LÅST';
+
             updateFirewallVisualState();
         }
 
@@ -1922,9 +2860,33 @@ if __name__ == "__main__":
         }
 
         /**************************************************************************
-         * 10. CAMERA CONTROLS & ANIMATION LOOP
+         * 10. MULTI-TOUCH & MOUSE CAMERA CONTROLS + RESPONSIVE AUTO-FIT
          **************************************************************************/
+        function getResponsiveOverviewRadius() {
+            const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+            if (aspect < 0.65) {
+                // Tall mobile portrait screen: pull camera back and slightly higher so PC A (-18) to PC B (+18) fits
+                return { radius: 64, phi: 0.96, theta: 0.18 };
+            } else if (aspect < 1.0) {
+                // Tablet portrait / wider mobile
+                return { radius: 52, phi: 1.02, theta: 0.1 };
+            }
+            return { radius: 37, phi: 1.08, theta: 0.0 };
+        }
+
+        function autoFitCameraForScreen(showNotification = false) {
+            const fit = getResponsiveOverviewRadius();
+            camControl.desiredTarget.set(0, 1.2, 0);
+            camControl.desiredSpherical.radius = fit.radius;
+            camControl.desiredSpherical.phi = fit.phi;
+            camControl.desiredSpherical.theta = fit.theta;
+            if (showNotification) {
+                showToast('3D-kamera tilpasset skjermformatet!', 'info');
+            }
+        }
+
         function setupCameraInteraction(domEl) {
+            // Mouse Controls
             domEl.addEventListener('mousedown', (e) => {
                 camControl.isDragging = true;
                 camControl.prevX = e.clientX;
@@ -1943,52 +2905,88 @@ if __name__ == "__main__":
                 camControl.prevY = e.clientY;
 
                 camControl.desiredSpherical.theta -= dx * 0.0065;
-                camControl.desiredSpherical.phi = Math.max(0.25, Math.min(1.48, camControl.desiredSpherical.phi - dy * 0.0065));
+                camControl.desiredSpherical.phi = Math.max(0.22, Math.min(1.48, camControl.desiredSpherical.phi - dy * 0.0065));
             });
 
             domEl.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                camControl.desiredSpherical.radius = Math.max(14, Math.min(68, camControl.desiredSpherical.radius + e.deltaY * 0.025));
+                camControl.desiredSpherical.radius = Math.max(12, Math.min(82, camControl.desiredSpherical.radius + e.deltaY * 0.03));
             }, { passive: false });
 
-            // Touch support
+            // Full Multi-Touch Controls (1-finger Orbit, 2-finger Pinch-Zoom & Pan)
+            let pinchStartDist = 0;
+            let pinchStartRadius = 37;
+            let twoFingerPrevMid = { x: 0, y: 0 };
+
             domEl.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     camControl.isDragging = true;
                     camControl.prevX = e.touches[0].clientX;
                     camControl.prevY = e.touches[0].clientY;
+                } else if (e.touches.length === 2) {
+                    camControl.isDragging = false;
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    pinchStartDist = Math.hypot(dx, dy);
+                    pinchStartRadius = camControl.desiredSpherical.radius;
+                    twoFingerPrevMid = {
+                        x: (e.touches[0].clientX + e.touches[1].clientX) * 0.5,
+                        y: (e.touches[0].clientY + e.touches[1].clientY) * 0.5
+                    };
                 }
-            }, { passive: true });
+            }, { passive: false });
 
-            window.addEventListener('touchend', () => {
-                camControl.isDragging = false;
+            window.addEventListener('touchend', (e) => {
+                if (!e.touches || e.touches.length === 0) {
+                    camControl.isDragging = false;
+                } else if (e.touches.length === 1) {
+                    camControl.isDragging = true;
+                    camControl.prevX = e.touches[0].clientX;
+                    camControl.prevY = e.touches[0].clientY;
+                }
             });
 
-            window.addEventListener('touchmove', (e) => {
-                if (!camControl.isDragging || e.touches.length !== 1) return;
-                const dx = e.touches[0].clientX - camControl.prevX;
-                const dy = e.touches[0].clientY - camControl.prevY;
-                camControl.prevX = e.touches[0].clientX;
-                camControl.prevY = e.touches[0].clientY;
+            domEl.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 1 && camControl.isDragging) {
+                    const dx = e.touches[0].clientX - camControl.prevX;
+                    const dy = e.touches[0].clientY - camControl.prevY;
+                    camControl.prevX = e.touches[0].clientX;
+                    camControl.prevY = e.touches[0].clientY;
 
-                camControl.desiredSpherical.theta -= dx * 0.0065;
-                camControl.desiredSpherical.phi = Math.max(0.25, Math.min(1.48, camControl.desiredSpherical.phi - dy * 0.0065));
-            }, { passive: true });
+                    camControl.desiredSpherical.theta -= dx * 0.0075;
+                    camControl.desiredSpherical.phi = Math.max(0.22, Math.min(1.48, camControl.desiredSpherical.phi - dy * 0.0075));
+                } else if (e.touches.length === 2) {
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (pinchStartDist > 10) {
+                        const scale = pinchStartDist / Math.max(10, dist);
+                        camControl.desiredSpherical.radius = Math.max(14, Math.min(82, pinchStartRadius * scale));
+                    }
+
+                    // 2-finger horizontal pan
+                    const midX = (e.touches[0].clientX + e.touches[1].clientX) * 0.5;
+                    const panDx = midX - twoFingerPrevMid.x;
+                    twoFingerPrevMid.x = midX;
+                    camControl.desiredTarget.x = Math.max(-18, Math.min(18, camControl.desiredTarget.x - panDx * 0.04));
+                }
+            }, { passive: false });
         }
 
         function setCameraPreset(preset) {
             if (preset === 'overview') {
-                camControl.desiredTarget.set(0, 1.5, 0);
-                camControl.desiredSpherical = { theta: 0.0, phi: 1.08, radius: 37 };
+                autoFitCameraForScreen(false);
             } else if (preset === 'fwA') {
                 camControl.desiredTarget.set(-8, 1.8, 0);
-                camControl.desiredSpherical = { theta: 0.55, phi: 1.12, radius: 16 };
+                camControl.desiredSpherical = { theta: 0.45, phi: 1.1, radius: window.innerWidth < 768 ? 22 : 16 };
             } else if (preset === 'fwB') {
                 camControl.desiredTarget.set(8, 1.8, 0);
-                camControl.desiredSpherical = { theta: -0.55, phi: 1.12, radius: 16 };
+                camControl.desiredSpherical = { theta: -0.45, phi: 1.1, radius: window.innerWidth < 768 ? 22 : 16 };
             } else if (preset === 'top') {
                 camControl.desiredTarget.set(0, 0, 0);
-                camControl.desiredSpherical = { theta: 0.0, phi: 0.26, radius: 44 };
+                camControl.desiredSpherical = { theta: 0.0, phi: 0.25, radius: window.innerWidth < 768 ? 62 : 44 };
             }
         }
 
@@ -1996,11 +2994,20 @@ if __name__ == "__main__":
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Ensure panels restore properly when switching between mobile and desktop breakpoints
+            if (window.innerWidth >= 1024) {
+                const chatSec = document.getElementById('right-section-chat');
+                const logSec = document.getElementById('right-section-log');
+                if (chatSec) chatSec.classList.remove('hidden');
+                if (logSec) logSec.classList.remove('hidden');
+            }
         }
 
         function updateFloatingLabelsProjections() {
             const halfW = window.innerWidth / 2;
             const halfH = window.innerHeight / 2;
+            const isMobile = window.innerWidth < 768;
 
             floatingLabels.forEach(item => {
                 const projected = item.pos.clone().project(camera);
@@ -2010,9 +3017,12 @@ if __name__ == "__main__":
                 }
                 const x = (projected.x * halfW) + halfW;
                 const y = -(projected.y * halfH) + halfH;
-                item.el.style.opacity = '1';
+                item.el.style.opacity = (isMobile && APP_STATE.mobileTab !== '3d') ? '0.25' : '1';
                 item.el.style.left = `${x}px`;
                 item.el.style.top = `${y}px`;
+                item.el.style.transform = isMobile
+                    ? 'translate(-50%, -100%) scale(0.78)'
+                    : 'translate(-50%, -100%) scale(1)';
             });
         }
 
@@ -2173,8 +3183,9 @@ if __name__ == "__main__":
         // Start Everything on Window Load
         window.onload = function () {
             initWebGL();
+            autoFitCameraForScreen(false);
             refreshPythonScript();
-            logPacketEvent('SYSTEM', '3D-Engine', 'WebRTC/UDP', 'OK', 'Klar for autonom NAT Hole Punching uten internett-tjenester.');
+            logPacketEvent('SYSTEM', '3D-Engine', 'WebRTC/UDP', 'OK', 'Klar for autonom NAT Hole Punching på mobil, nettbrett og PC.');
             animate();
             // Run an initial synchronized hole-punching demonstration after 800ms so the user immediately sees the process in 3D
             setTimeout(() => {
