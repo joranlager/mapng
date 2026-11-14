@@ -144,8 +144,8 @@ function updateEstimate() {
   const K = Math.ceil((2 + 120 + payloadBytes.length) / chunk);
   const t = (share) => fmtTime((K / share / per) * (interval / 1000));
   $('estimate').textContent =
-    `${K} koder per tredel: paritet, data, paritet (${per} per pakke, ${fmtBytes(Math.round((per * chunk) / (interval / 1000)))}/s). ` +
-    `Hele runden tar ${fmtTime(((3 * K) / per) * (interval / 1000))}. Mottakeren er ferdig etter ca. ${t(1)} hvis den leser alt, ${t(0.8)} ved 20 % tap, ${t(0.5)} ved 50 % tap.`;
+    `${K} datakoder først, deretter bare paritetskoder (${per} per pakke, ${fmtBytes(Math.round((per * chunk) / (interval / 1000)))}/s). ` +
+    `Datakodene tar ${t(1)}. Mottakeren er ferdig etter ca. ${t(1)} hvis den leser alt, ${t(0.8)} ved 20 % tap, ${t(0.5)} ved 50 % tap.`;
   $('btn-start').disabled = false;
 }
 
@@ -205,7 +205,7 @@ function drawCountdown() {
   pctx.font = `${Math.round(18 * dpr)}px -apple-system, "Segoe UI", sans-serif`;
   pctx.fillStyle = '#5d6673';
   pctx.fillText('Sendingen starter – sikt mottakerens kamera mot denne skjermen', W / 2, H / 2 + Math.min(W, H) * 0.32);
-  $('player-status').textContent = `Starter om ${Math.ceil(left / 1000)} s · ${enc.K} koder per tredel`;
+  $('player-status').textContent = `Starter om ${Math.ceil(left / 1000)} s · ${enc.K} datakoder`;
 }
 function countdownTick() {
   if (!playing || paused) return;
@@ -233,10 +233,8 @@ function drawPacket() {
     pctx.drawImage(q, x, y, size, size);
   });
   const n = enc.count, K = enc.K;
-  const pos = Math.max(0, n - 1) % (3 * K), third = Math.floor(pos / K), round = Math.floor(Math.max(0, n - 1) / (3 * K)) + 1;
-  $('player-status').textContent =
-    `${['Paritet', 'Data', 'Paritet'][third]} (del ${third + 1}/3) ${(pos % K) + 1}/${K}` +
-    (round > 1 ? ` · runde ${round}` : '') + ` · ${interval} ms · ${perPacket} per pakke`;
+  $('player-status').textContent = (n <= K ? `Data ${n}/${K}` : `Data ferdig (${K}) · paritet ${n - K}`) +
+    ` · ${interval} ms · ${perPacket} per pakke`;
 }
 
 // Hver pakke er de neste kodene fra koderen: først alle datakodene, deretter paritetskoder uten ende.

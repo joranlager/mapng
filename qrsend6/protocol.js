@@ -173,14 +173,10 @@ export class Encoder {
     }
     return this._sym(0, seed, acc);
   }
-  // Rekkefølgen i versjon 6: en tredel paritet, en tredel data, en tredel paritet, og så forfra.
-  // Hver tredel er K koder. Returnerer neste kode.
+  // Rekkefølgen: først alle K datakodene én gang, deretter bare paritetskoder (alltid nye).
   next() {
-    const i = this.count++, K = this.K;
-    const pos = i % (3 * K), cycle = Math.floor(i / (3 * K));
-    if (pos < K) return this.parity(cycle * 2 * K + pos);
-    if (pos < 2 * K) return this.data(pos - K);
-    return this.parity(cycle * 2 * K + pos - K);
+    const i = this.count++;
+    return i < this.K ? this.data(i) : this.parity(i - this.K);
   }
   _sym(flags, seed, words) {
     const payload = new Uint8Array(words.buffer, words.byteOffset, this.B);

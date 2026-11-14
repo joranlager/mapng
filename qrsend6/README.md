@@ -1,14 +1,8 @@
-# QR-overføring 6 (paritet, data, paritet)
+# QR-overføring 6 (data først, deretter paritet, med nedtelling)
 
-Versjon 5 (`../qrsend5`) med en annen rekkefølge hos avsenderen. Overføringen går i tre like deler,
-hver på K koder (K = antall datakoder):
+Som versjon 5 (`../qrsend5`), med nedtelling før start.
 
-1. bare paritetskoder
-2. alle datakodene
-3. bare paritetskoder
-
-Deretter starter den forfra, med nye paritetskoder hver gang (ingen paritetskode vises to ganger).
-Mottakeren, formatet og innstillingene er som i versjon 5.
-
-Beregnet (K = 201, snitt av 30 forsøk): mottakeren er ferdig etter like mange viste koder som i versjon 5,
-uansett når den begynner å se: 1,00–1,01×K uten tap, ca. 1,26×K ved 20 % tap, ca. 1,68×K ved 40 % tap.
+- Nedtelling på avsenderskjermen før sending (standard 5 s, kan endres, 0 = av).
+- Avsenderen sender først alle K datakodene én gang. Når de er ferdige, sendes bare paritetskoder
+  (alltid nye) helt til den stoppes.
+- En paritetskode kan erstatte en hvilken som helst tapt kode. Mottakeren trenger K + ca. 0–4 koder.
