@@ -116,8 +116,10 @@
         <div><span id="recv-time">0:00.0</span><small id="recv-time-label">overføringstid</small></div>
       </div>
       <div class="progress"><div id="progress-bar"></div></div>
-      <p id="recv-status" class="mono">Venter på QR-koder …</p>
+      <p id="recv-phase" class="recv-phase">Kameraet er av. Trykk «Start kamera».</p>
       <canvas id="chunk-map" height="40"></canvas>
+      <p class="legend"><span class="sw ok"></span>lest direkte <span class="sw par"></span>gjenopprettet med paritet <span class="sw par pale"></span>paritet mottatt, regnes ut til slutt <span class="sw miss"></span>mangler</p>
+      <p id="recv-status" class="mono muted">Ingen koder ennå</p>
     </section>
 
     <section class="card" id="result" hidden>

@@ -298,6 +298,8 @@ document.addEventListener('keydown', (e) => { if (playing && e.key === 'Escape')
 // =====================================================================
 const video = $('video');
 let stream = null, cameraOn = false, dec = new Decoder(), done = false, paritySeen = 0;
+let direct = new Set();      // datakoder lest direkte (nummeret deres)
+let dupSeen = 0, lastCodeAt = 0, lastFps = null, resultOk = true;
 let workers = [], readyWorkers = 0, framesDone = 0, codesSeen = 0, fpsT0 = performance.now();
 let lastResultUrl = null, resultBlob = null, resultName = '';
 const grab = document.createElement('canvas');
@@ -311,14 +313,14 @@ function initWorkers() {
     w.busy = true; // until ready
     w.spare = null;
     w.onmessage = (e) => onWorkerMessage(w, e.data);
-    w.onerror = (e) => setStatus('Feil i dekoder: ' + (e.message || e));
+    w.onerror = (e) => setError('Feil i dekoder: ' + (e.message || e));
     workers.push(w);
   }
 }
 
 function onWorkerMessage(w, msg) {
   if (msg.type === 'ready') { w.busy = false; readyWorkers++; return; }
-  if (msg.type === 'error') { setStatus('Kunne ikke laste QR-dekoderen: ' + msg.message); return; }
+  if (msg.type === 'error') { setError('Kunne ikke laste QR-dekoderen: ' + msg.message); return; }
   if (msg.type === 'result') {
     w.busy = false;
     w.spare = msg.buffer;
@@ -331,22 +333,55 @@ function onCode(bytes) {
   const sym = parseSymbol(bytes);
   if (!sym) return;
   codesSeen++;
+  lastCodeAt = performance.now();
   if (dec.tid === null || sym.tid !== dec.tid) {
     // Ny overføring: overføringstid regnes fra første mottatte kode.
-    done = false; paritySeen = 0;
+    done = false; paritySeen = 0; dupSeen = 0; direct = new Set();
     tStart = performance.now(); tEnd = 0;
     $('result').hidden = true;
   }
   if (done && sym.tid === dec.tid) return;
   const r = dec.add(sym);
+  if (r === 'dup') dupSeen++;
   if (r === 'new' || r === 'redundant') {
-    if (!(sym.flags & 1)) paritySeen++;
+    if (sym.flags & 1) direct.add(sym.seed); else paritySeen++;
     drawChunkMap();
     if (dec.complete && !done) finish();
   }
 }
 
+// Hvor mange manglende datakoder pariteten dekker så langt (én nyttig paritetskode per manglende kode).
+const parityCovered = () => Math.max(0, dec.decoded - direct.size);
+
+// Forklarer for mottakeren hva som skjer akkurat nå.
+function updatePhase() {
+  const el = $('recv-phase'), now = performance.now();
+  let text, cls = '';
+  if (recvError) { text = '⚠ ' + recvError; cls = 'warn'; }
+  else if (!cameraOn && !done) { text = 'Kameraet er av. Trykk «Start kamera».'; }
+  else if (done) { text = resultOk ? '✔ Ferdig. Bildet er mottatt og kontrollert.' : '⚠ Ferdig, men kontrollsummen stemmer ikke.'; cls = resultOk ? 'ok' : 'warn'; }
+  else if (!dec.K) { text = 'Venter på avsenderen. Sikt kameraet mot skjermen med QR-kodene.'; }
+  else {
+    const K = dec.K, missing = K - direct.size, cov = parityCovered(), left = K - dec.decoded;
+    if (now - lastCodeAt > 2500) {
+      text = `Ser ingen koder akkurat nå (${((now - lastCodeAt) / 1000).toFixed(0)} s). Sikt mot avsenderen. Mangler ${left} koder.`; cls = 'warn';
+    } else if (!paritySeen) {
+      text = `Mottar data: ${direct.size} av ${K} koder lest.` + (missing && direct.size ? ' Hull fylles når pariteten kommer.' : '');
+    } else {
+      text = `Avsenderen sender paritet. ${missing} datakoder mangler, pariteten dekker ${cov} av dem. Trenger ${left} koder til.`;
+    }
+  }
+  el.textContent = text;
+  el.className = 'recv-phase ' + cls;
+  const parts = [];
+  if (dec.K) parts.push(`lest direkte ${direct.size}/${dec.K}`, `nyttig paritet ${parityCovered()}`, `like koder lest om igjen ${dupSeen}`);
+  if (cameraOn && lastFps != null) parts.push(`${lastFps.toFixed(1)} bilder/s analysert`, `kamera ${video.videoWidth}×${video.videoHeight}`);
+  if (!done || !parts.length) setStatus(parts.join(' · ') || 'Ingen koder ennå');
+}
+
 function setStatus(t) { $('recv-status').textContent = t; }
+let recvError = '';
+function setError(t) { recvError = t; }
 
 // Overføringstid og prosent overført
 let tStart = 0, tEnd = 0;
@@ -365,9 +400,10 @@ function updateProgressText() {
   $('recv-speed').textContent = fmtMBs(ms > 0 ? bytes / (ms / 1000) : 0);
   $('recv-time-label').textContent = tEnd ? 'overføringstid (ferdig)' : 'overføringstid';
 }
-setInterval(updateProgressText, 100);
+setInterval(() => { updateProgressText(); updatePhase(); }, 100);
 
-// Kartet viser hvilke plasser i ligningssettet som er fylt (data eller paritet som erstatter data).
+// Kartet: grønn = datakode lest direkte, gul = erstattet med paritet, grå = mangler.
+// Lys gul betyr at pariteten for koden er mottatt, og at den regnes ut når alle hull er dekket.
 function drawChunkMap() {
   const cm = $('chunk-map');
   const dpr = window.devicePixelRatio || 1;
@@ -377,20 +413,23 @@ function drawChunkMap() {
   ctx.fillStyle = css.getPropertyValue('--missing'); ctx.fillRect(0, 0, cm.width, cm.height);
   $('progress-bar').style.width = dec.K ? `${(100 * dec.decoded) / dec.K}%` : '0';
   if (!dec.K) return;
-  const n = dec.K, w = cm.width / n;
-  ctx.fillStyle = css.getPropertyValue('--ok');
-  for (let i = 0; i < n; i++) if (dec.blocks[i]) ctx.fillRect(Math.floor(i * w), 0, Math.ceil(w), cm.height);
+  const n = dec.K, w = cm.width / n, ok = css.getPropertyValue('--ok'), par = css.getPropertyValue('--parity');
+  let cov = dec.complete ? n : parityCovered();
+  for (let i = 0; i < n; i++) {
+    if (direct.has(i)) { ctx.globalAlpha = 1; ctx.fillStyle = ok; }
+    else if (cov > 0) { cov--; ctx.globalAlpha = dec.complete ? 1 : 0.45; ctx.fillStyle = par; }
+    else continue;
+    ctx.fillRect(Math.floor(i * w), 0, Math.ceil(w), cm.height);
+  }
+  ctx.globalAlpha = 1;
 }
 
 function updateStats() {
   if (!cameraOn) return;
   const now = performance.now(), dt = (now - fpsT0) / 1000;
   if (dt >= 1) {
-    const fps = framesDone / dt;
+    lastFps = framesDone / dt;
     framesDone = 0; fpsT0 = now;
-    const vw = video.videoWidth, vh = video.videoHeight;
-    const prog = dec.K ? `${dec.decoded}/${dec.K} koder (${paritySeen} fra paritet)` : 'ingen koder ennå';
-    if (!done) setStatus(`${prog} · ${fps.toFixed(1)} bilder/s analysert · ${vw}×${vh}`);
   }
 }
 
@@ -430,7 +469,7 @@ async function listCameras() {
 
 async function startCamera(deviceId) {
   if (!navigator.mediaDevices?.getUserMedia) {
-    setStatus('Kameraet krever HTTPS (eller localhost) og en nettleser med kamerastøtte.');
+    setError('Kameraet krever HTTPS (eller localhost) og en nettleser med kamerastøtte.');
     return;
   }
   stopCamera();
@@ -442,7 +481,7 @@ async function startCamera(deviceId) {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: video_c, audio: false });
   } catch (e) {
-    setStatus('Fikk ikke tilgang til kameraet: ' + e.message);
+    setError('Fikk ikke tilgang til kameraet: ' + e.message);
     return;
   }
   const track = stream.getVideoTracks()[0];
@@ -453,6 +492,7 @@ async function startCamera(deviceId) {
   video.srcObject = stream;
   await video.play().catch(() => {});
   cameraOn = true;
+  recvError = '';
   $('video-hint').hidden = true;
   $('btn-camera').textContent = 'Stopp kamera';
   keepAwake(true);
@@ -475,7 +515,7 @@ $('btn-camera').onclick = () => (cameraOn ? stopCamera() : startCamera($('opt-ca
 $('opt-camera').onchange = () => cameraOn && startCamera($('opt-camera').value);
 $('opt-res').onchange = () => cameraOn && startCamera($('opt-camera').value || undefined);
 $('btn-reset').onclick = () => {
-  dec = new Decoder(); done = false; codesSeen = 0; paritySeen = 0; tStart = 0; tEnd = 0;
+  dec = new Decoder(); done = false; codesSeen = 0; paritySeen = 0; dupSeen = 0; direct = new Set(); lastCodeAt = 0; tStart = 0; tEnd = 0;
   updateProgressText();
   $('result').hidden = true; $('progress-bar').style.width = '0';
   drawChunkMap();
@@ -487,6 +527,8 @@ function finish() {
   tEnd = performance.now();
   updateProgressText();
   const { meta, file, ok } = dec.assemble();
+  resultOk = ok;
+  drawChunkMap();
   resultName = meta.name || 'bilde';
   resultBlob = new Blob([file], { type: meta.type || 'application/octet-stream' });
   if (lastResultUrl) URL.revokeObjectURL(lastResultUrl);
@@ -495,11 +537,11 @@ function finish() {
   $('btn-download').href = lastResultUrl;
   $('btn-download').download = resultName;
   $('result-info').textContent =
-    `${resultName} · ${fmtBytes(file.length)} · ${dec.K} datakoder, ${dec.symbols} mottatt (${paritySeen} paritet) · ` +
+    `${resultName} · ${fmtBytes(file.length)} · ${dec.K} datakoder: ${direct.size} lest direkte, ${dec.K - direct.size} gjenopprettet med paritet · ` +
     `overført på ${fmtClock(tEnd - tStart)} (${fmtMBs(file.length / Math.max(0.001, (tEnd - tStart) / 1000))} MB/s) · ` +
     (ok ? 'kontrollsum OK ✔' : 'KONTROLLSUM FEILER – filen kan være skadet');
   $('result').hidden = false;
-  setStatus(ok ? `Ferdig! ${dec.K}/${dec.K} koder gjenopprettet.` : 'Ferdig, men kontrollsummen stemmer ikke.');
+  setStatus(`${direct.size} koder lest direkte (grønn) · ${dec.K - direct.size} gjenopprettet med paritet (gul) · ${dupSeen} like koder lest om igjen`);
   $('result').scrollIntoView({ behavior: 'smooth' });
   if (navigator.vibrate) navigator.vibrate(150);
 }
@@ -523,5 +565,5 @@ try { startTab = new URLSearchParams(location.search).get('mode') || localStorag
 showTab(startTab === 'recv' ? 'recv' : 'send');
 drawChunkMap();
 if (!window.isSecureContext) {
-  setStatus('Obs: siden er ikke lastet over HTTPS – kameraet vil ikke virke her.');
+  setError('Obs: siden er ikke lastet over HTTPS – kameraet vil ikke virke her.');
 }

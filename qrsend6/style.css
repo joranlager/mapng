@@ -7,6 +7,7 @@
   --accent: #2563eb;
   --accent-text: #ffffff;
   --ok: #16a34a;
+  --parity: #eab308;
   --missing: #e5e7eb;
   color-scheme: light dark;
 }
@@ -90,3 +91,12 @@ button:disabled { opacity: .5; cursor: default; }
 .recv-big span { font: 600 clamp(20px, 6.5vw, 32px)/1.1 ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
 .recv-big small { color: var(--muted); font-size: 13px; }
 h1 small { font-weight: 400; color: var(--muted); font-size: 14px; }
+.recv-phase { font-weight: 600; font-size: 16px; margin: 12px 0 8px; }
+.recv-phase.ok { color: var(--ok); }
+.recv-phase.warn { color: #d97706; }
+.legend { font-size: 12px; color: var(--muted); margin: 6px 0; line-height: 1.9; }
+.legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: -1px; }
+.legend .sw:first-child { margin-left: 0; }
+.sw.ok { background: var(--ok); } .sw.par { background: var(--parity); } .sw.par.pale { opacity: .45; }
+.sw.miss { background: var(--missing); border: 1px solid var(--border); }
+#recv-status { margin-top: 4px; }
