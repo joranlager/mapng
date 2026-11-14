@@ -48,6 +48,7 @@ let prepareToken = 0;
 const opt = {
   format: $('opt-format'), maxSide: $('opt-maxside'), quality: $('opt-quality'),
   perPacket: $('opt-perpacket'), chunk: $('opt-chunk'), interval: $('opt-interval'), ecc: $('opt-ecc'),
+  countdown: $('opt-countdown'),
 };
 
 function loadSettings() {
@@ -71,7 +72,7 @@ $('file').addEventListener('change', (e) => {
   prepare();
 });
 for (const k of ['format', 'maxSide', 'quality']) opt[k].addEventListener('input', () => { saveSettings(); prepare(); });
-for (const k of ['perPacket', 'chunk', 'interval', 'ecc']) opt[k].addEventListener('input', () => { saveSettings(); updateEstimate(); });
+for (const k of ['perPacket', 'chunk', 'interval', 'ecc', 'countdown']) opt[k].addEventListener('input', () => { saveSettings(); updateEstimate(); });
 opt.quality.addEventListener('input', () => ($('out-quality').textContent = opt.quality.value));
 
 async function decodeImage(file) {
@@ -189,8 +190,33 @@ function resizePlayer() {
   drawPacket();
 }
 
+// Nedtelling før sending: stort tall midt på skjermen, så mottakeren rekker å sikte.
+let countdownEnd = 0, countdownLeft = 0;
+function drawCountdown() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = pc.width, H = pc.height - Math.round($('player-bar').offsetHeight * dpr);
+  const left = paused ? countdownLeft : Math.max(0, countdownEnd - performance.now());
+  pctx.fillStyle = '#fff';
+  pctx.fillRect(0, 0, W, pc.height);
+  pctx.fillStyle = '#15181d';
+  pctx.textAlign = 'center'; pctx.textBaseline = 'middle';
+  pctx.font = `700 ${Math.round(Math.min(W, H) * 0.45)}px -apple-system, "Segoe UI", sans-serif`;
+  pctx.fillText(String(Math.ceil(left / 1000)), W / 2, H / 2);
+  pctx.font = `${Math.round(18 * dpr)}px -apple-system, "Segoe UI", sans-serif`;
+  pctx.fillStyle = '#5d6673';
+  pctx.fillText('Sendingen starter – sikt mottakerens kamera mot denne skjermen', W / 2, H / 2 + Math.min(W, H) * 0.32);
+  $('player-status').textContent = `Starter om ${Math.ceil(left / 1000)} s · ${enc.K} koder per tredel`;
+}
+function countdownTick() {
+  if (!playing || paused) return;
+  if (performance.now() >= countdownEnd) { countdownEnd = 0; tick(); return; }
+  drawCountdown();
+  timer = setTimeout(countdownTick, 100);
+}
+
 function drawPacket() {
   if (!playing) return;
+  if (countdownEnd) { drawCountdown(); return; }
   const W = pc.width, barH = Math.round($('player-bar').offsetHeight * (window.devicePixelRatio || 1));
   const H = pc.height - barH;
   pctx.fillStyle = '#fff';
@@ -236,9 +262,11 @@ function startPlayer() {
   $('player').hidden = false;
   document.documentElement.requestFullscreen?.().catch(() => {});
   keepAwake(true);
+  const secs = Math.max(0, Math.min(120, +opt.countdown.value || 0));
+  countdownEnd = secs > 0 ? performance.now() + secs * 1000 : 0;
   resizePlayer();
   clearTimeout(timer);
-  tick();
+  if (countdownEnd) countdownTick(); else tick();
 }
 
 function stopPlayer() {
@@ -254,6 +282,12 @@ $('btn-stop').onclick = stopPlayer;
 $('btn-pause').onclick = () => {
   paused = !paused;
   $('btn-pause').textContent = paused ? 'Fortsett' : 'Pause';
+  if (countdownEnd) {
+    // Pause under nedtellingen fryser tallet. Fortsett teller videre derfra.
+    if (paused) countdownLeft = Math.max(0, countdownEnd - performance.now());
+    else { countdownEnd = performance.now() + countdownLeft; clearTimeout(timer); countdownTick(); }
+    return;
+  }
   if (!paused) { clearTimeout(timer); tick(); }
 };
 $('btn-slower').onclick = () => { interval = Math.min(5000, Math.round(interval * 1.25)); drawPacket(); };
