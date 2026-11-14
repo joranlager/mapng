@@ -85,6 +85,7 @@ button:disabled { opacity: .5; cursor: default; }
 #result-img { display: block; max-width: 100%; margin: 0 auto 8px; border-radius: 8px; }
 .recv-big { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; }
 .recv-big > div { display: flex; flex-direction: column; }
+.recv-big > div:nth-child(2) { align-items: center; }
 .recv-big > div:last-child { align-items: flex-end; }
-.recv-big span { font: 600 32px/1.1 ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.recv-big span { font: 600 clamp(20px, 6.5vw, 32px)/1.1 ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
 .recv-big small { color: var(--muted); font-size: 13px; }

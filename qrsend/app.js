@@ -346,10 +346,15 @@ const fmtClock = (ms) => {
   const t = Math.max(0, ms) / 1000, m = Math.floor(t / 60), sec = t - m * 60;
   return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
 };
+const fmtMBs = (bps) => (bps / 1048576).toFixed(3);
 function updateProgressText() {
   const pct = assembler ? (100 * assembler.received) / assembler.count : 0;
   $('recv-pct').textContent = `${pct < 100 && pct > 99 ? 99 : Math.floor(pct)} %`;
-  $('recv-time').textContent = fmtClock(tStart ? (tEnd || performance.now()) - tStart : 0);
+  const ms = tStart ? (tEnd || performance.now()) - tStart : 0;
+  $('recv-time').textContent = fmtClock(ms);
+  // Hastighet: mottatte bildedata (byte) per sekund, i MB/s
+  const bytes = assembler ? assembler.parts.reduce((n, p) => n + (p ? p.length : 0), 0) : 0;
+  $('recv-speed').textContent = fmtMBs(ms > 0 ? bytes / (ms / 1000) : 0);
   $('recv-time-label').textContent = tEnd ? 'overføringstid (ferdig)' : 'overføringstid';
 }
 setInterval(updateProgressText, 100);
@@ -484,7 +489,7 @@ function finish() {
   $('btn-download').download = resultName;
   $('result-info').textContent =
     `${resultName} · ${fmtBytes(file.length)} · ${assembler.count} QR-koder · ` +
-    `overført på ${fmtClock(tEnd - tStart)} (${fmtBytes(Math.round(file.length / Math.max(0.001, (tEnd - tStart) / 1000)))}/s) · ` +
+    `overført på ${fmtClock(tEnd - tStart)} (${fmtMBs(file.length / Math.max(0.001, (tEnd - tStart) / 1000))} MB/s) · ` +
     (ok ? 'kontrollsum OK ✔' : 'KONTROLLSUM FEILER – filen kan være skadet');
   $('result').hidden = false;
   setStatus(ok ? `Ferdig! ${assembler.count}/${assembler.count} biter mottatt.` : 'Ferdig, men kontrollsummen stemmer ikke.');
