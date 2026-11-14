@@ -27,6 +27,7 @@ import { fetchMapterhornRaw } from "./mapterhorn.js";
 import { fetchKartverketDtmRaw, norwayElevationEnabled } from "./norway/kartverketDtm.js";
 import { touchesNorway, insideNorway } from "./norway/matrikkelBuildings.js";
 import { measureNorwayBuildingHeights, norwayBuildingHeightsEnabled } from "./norway/buildingHeights.js";
+import { applyVegbilder360, norwayVegbilderEnabled } from "./norway/vegbilder.js";
 import { isGroundLevelRoad, smoothRoadsInHeightmap } from "./roadSmoother.js";
 import { snapRoadsToTerrain } from "./roadSnap.js";
 import { roundRoadCorners } from "./roadCurves.js";
@@ -2413,6 +2414,27 @@ export const fetchTerrainData = async (
     } catch (error) {
       if (error?.name === "AbortError" || signal?.aborted) throw error;
       console.warn("[Kartverket] Building heights could not be measured; heights come from the building types:", error?.message || error);
+    }
+  }
+  // Norway: the colour of each building's walls, read from Statens vegvesen's Vegbilder 360° images taken beside it
+  if (includeOSM && !flat && norwayVegbilderEnabled() && osmFeatures.some((f) => f.type === "building")) {
+    try {
+      const groundAt = (lat, lng) => {
+        const x = ((lng - finalBounds.west) / (finalBounds.east - finalBounds.west)) * (width - 1);
+        const y = ((finalBounds.north - lat) / (finalBounds.north - finalBounds.south)) * (height - 1);
+        const c = Math.max(0, Math.min(width - 2, Math.floor(x))), r = Math.max(0, Math.min(height - 2, Math.floor(y)));
+        const fx = Math.max(0, Math.min(1, x - c)), fy = Math.max(0, Math.min(1, y - r));
+        const h00 = heightMap[r * width + c], h10 = heightMap[r * width + c + 1], h01 = heightMap[(r + 1) * width + c], h11 = heightMap[(r + 1) * width + c + 1];
+        if (![h00, h10, h01, h11].every((h) => h > -1000)) return null;
+        return (1 - fy) * ((1 - fx) * h00 + fx * h10) + fy * ((1 - fx) * h01 + fx * h11);
+      };
+      const coloured = await applyVegbilder360(osmFeatures, finalBounds, { signal, onProgress, groundAt: (lat, lng) => groundAt(lat, lng) ?? 0 });
+      osmFeatures = coloured.features;
+      console.info(`[Vegbilder] Wall colours read for ${coloured.stats.coloured} of ${coloured.stats.buildings} buildings from ${coloured.stats.images} 360° images (${coloured.stats.records} images beside the roads here).`);
+      onProgress?.(`Vegbilder: wall colours on ${coloured.stats.coloured} buildings.`);
+    } catch (error) {
+      if (error?.name === "AbortError" || signal?.aborted) throw error;
+      console.warn("[Vegbilder] Wall colours could not be read; the buildings keep the colours from their types:", error?.message || error);
     }
   }
   // what covers the ground (ESA WorldCover), with the map data

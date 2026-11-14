@@ -17,6 +17,7 @@ start place is Trondheim, and the place search asks Nominatim for Norway only. T
 | Road network | `services/norway/nvdbGeometry.js` (`replaceRoadsWithNvdb`); hook in `fetchOSMData` before the road data step | NVDB road network + objects 60 (Bru), 67 (Tunnelløp), 595 (Motorveg) placed on it |
 | Bridge and tunnel heights | `services/norway/nvdbNetwork.js`; hooks in `fetchOSMData`, `solveTunnelAs` (`services/beamngTunnels.js`, `measuredProfile`) and the export's structure pins (search "NVDB's surveyed") | NVDB road network (`vegnett/api/v4/veglenkesekvenser/segmentert`, 3D lines, NN2000) |
 | Building heights | `services/norway/buildingHeights.js`; hook in `fetchTerrainData` after the OSM fetch | Kartverket DOM1 minus DTM1 under each outline |
+| Wall colours | `services/norway/vegbilder.js`; hook in `fetchTerrainData` after the building heights | Statens vegvesen Vegbilder: 360° images (WFS `www.vegvesen.no/kart/ogc/vegbilder_1_0/ows`, images by id through `vegbilder-proxy.atlas.vegvesen.no/proxy?id=`) |
 | Sign plates | `services/norway/norwaySigns.js`; hook in `services/exportBeamNGLevel.js` (search "Norwegian signs") | NVDB sign plates + pictures in `public/norway_signs` |
 
 Roads, paths, junctions, bridges and tunnels come from NVDB only: OSM's road ways, road areas, bridge outlines and
@@ -24,7 +25,7 @@ junction nodes are taken out of the map data (also when the data came from Overt
 Overpass servers are busy). Buildings, land use, water and railways stay OpenStreetMap's. NVDB roads are not slid
 onto the terrain (`snapRoadsToTerrain`) and not rounded (`roundRoadCorners`). Each step falls back to the
 app's old behaviour when its source fails. Off switches (localStorage, value `"0"`): `mapng_norwayElevation`,
-`mapng_norwayBuildings`, `mapng_norwayRoads`, `mapng_norwaySigns`, `mapng_norwayRoadHeights`, `mapng_norwayRoadGeometry`, `mapng_norwayBuildingHeights`.
+`mapng_norwayBuildings`, `mapng_norwayRoads`, `mapng_norwaySigns`, `mapng_norwayRoadHeights`, `mapng_norwayRoadGeometry`, `mapng_norwayBuildingHeights`, `mapng_norwayVegbilder`.
 
 Kartverket elevation runs for "Best free" and "Standard" alike (a named source, USGS, GPXZ, KRON86 or an uploaded
 file, is kept). Data is fetched in the Generate step; sign plates, bridge pins and tunnel profiles are made in the
@@ -39,7 +40,7 @@ app's own profile when the ground does not cover it.
 
 ```
 npm ci                                   # root; desktop/ needs its own npm ci
-npm test                                 # node --test tests/*.test.mjs (951 pass; 5 fail on Windows only: the tests build paths as C:C:...)
+npm test                                 # node --test tests/*.test.mjs (975 pass; 5 fail on Windows only: the tests build paths as C:C:...)
 npm run build                            # Vite build into dist/
 node scripts/norway/check.mjs            # the six Norwegian data paths against the live servers (Trondheim, 1 km)
 python scripts/norway/fetch_sign_art.py  # sign pictures from norske_skilt_komplett (in the project) into public/norway_signs
@@ -47,7 +48,7 @@ cd desktop && npm run stage && npm start # desktop app (after npm run build at t
 ```
 
 Tests for this work: `tests/kartverket*.test.mjs`, `tests/matrikkel*.test.mjs`, `tests/nvdbRoads.test.mjs`, `tests/nvdbNetwork.test.mjs`, `tests/nvdbGeometry.test.mjs`, `tests/norwayBuildingHeights.test.mjs`,
-`tests/norwaySigns*.test.mjs`.
+`tests/norwaySigns*.test.mjs`, `tests/vegbilder.test.mjs`.
 
 ## Verified against the live servers (2026-11-11)
 
@@ -74,6 +75,14 @@ Nothing here has been run in BeamNG.
    31/33 right and 34 ahead are seen in the data). The letters are Arial, not the road sign alphabet.
 
 ## Known limits
+
+- Wall colours (Vegbilder): only buildings that a 360° image taken beside a state road sees from outside get a colour read
+  from the real wall (`building:colour`, `mapng:colour_source=vegbilder`); a colour OSM gives is kept. Trees, hedges, fences
+  and noise barriers hide many walls, so a view that reads as dark as foliage is dropped and the views of a building must
+  agree. At most 120 images (4.5 MB each) per map, kept by the desktop download cache (8 GB cap). The links in the WFS answer
+  expire after ten hours; the proxy's do not, so the cache keeps them. The 360° pictures' middle is the direction of travel
+  (checked against Matrikkel buildings in Oslo); the camera is taken 2.8 m over the road. Facade textures (not only
+  colours) and the forward-looking Planar images are not used: their camera's field of view is not published.
 
 - One NVDB value per OSM road: a speed limit that changes along an OSM way is not split.
 - A map crossing into Sweden, Finland or Russia gets Kartverket heights on the Norwegian side only.
